@@ -4,6 +4,10 @@
     {
       "src": "api/rating.py",
       "use": "@vercel/python"
+    },
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
@@ -12,8 +16,12 @@
       "dest": "/index.html"
     },
     {
+      "src": "/index.html",
+      "dest": "/index.html"
+    },
+    {
       "src": "/api/rating",
-      "dest": "api/rating.py"
+      "dest": "/api/rating.py"
     }
   ]
 }
