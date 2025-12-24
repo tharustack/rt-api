@@ -8,12 +8,12 @@
   ],
   "routes": [
     {
-      "src": "/api/rating",
-      "dest": "api/rating.py"
-    },
-    {
       "src": "/",
       "dest": "/index.html"
+    },
+    {
+      "src": "/api/rating",
+      "dest": "api/rating.py"
     }
   ]
 }
