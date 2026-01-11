@@ -65,198 +65,139 @@ class RottenTomatoesScraper:
             print(f"Search error: {str(e)}")
             raise Exception(f"Search error: {str(e)}")
     
-    def _extract_trailer_url(self, soup, movie_url):
-        """Extract trailer URL - COMPREHENSIVE approach"""
-        print("Extracting trailer...")
-        
-        # Strategy 1: Check all <a> tags for trailer/video links
-        for link in soup.find_all('a', href=True):
-            href = link.get('href', '').lower()
-            text = link.get_text().lower()
-            
-            # Check if it's a trailer link
-            if 'trailer' in text or 'watch' in text:
-                full_href = link.get('href')
-                
-                # YouTube links
-                if 'youtube.com' in full_href or 'youtu.be' in full_href:
-                    video_id_match = re.search(r'(?:watch\?v=|youtu\.be/|embed/)([a-zA-Z0-9_-]{11})', full_href)
-                    if video_id_match:
-                        print(f"Found YouTube trailer: {video_id_match.group(1)}")
-                        return f"https://www.youtube.com/watch?v={video_id_match.group(1)}"
-                
-                # Other video platforms
-                if any(platform in full_href for platform in ['vimeo.com', 'dailymotion.com', 'video']):
-                    if full_href.startswith('http'):
-                        print(f"Found trailer link: {full_href}")
-                        return full_href
-        
-        # Strategy 2: Look for YouTube iframes
-        for iframe in soup.find_all('iframe'):
-            src = iframe.get('src', '')
-            if 'youtube' in src or 'youtube-nocookie' in src:
-                video_id_match = re.search(r'(?:embed/|v=)([a-zA-Z0-9_-]{11})', src)
-                if video_id_match:
-                    print(f"Found YouTube iframe: {video_id_match.group(1)}")
-                    return f"https://www.youtube.com/watch?v={video_id_match.group(1)}"
-        
-        # Strategy 3: Look in script tags for video data
-        for script in soup.find_all('script'):
-            if script.string:
-                # Look for YouTube video IDs
-                matches = re.findall(r'"(?:videoId|video_id)"\s*:\s*"([a-zA-Z0-9_-]{11})"', script.string)
-                if matches:
-                    print(f"Found YouTube ID in script: {matches[0]}")
-                    return f"https://www.youtube.com/watch?v={matches[0]}"
-                
-                # Look for YouTube URLs
-                matches = re.findall(r'(?:https?:)?//(?:www\.)?youtube\.com/(?:embed/|watch\?v=)([a-zA-Z0-9_-]{11})', script.string)
-                if matches:
-                    print(f"Found YouTube URL in script: {matches[0]}")
-                    return f"https://www.youtube.com/watch?v={matches[0]}"
-        
-        # Strategy 4: Try fetching the videos page
-        try:
-            videos_url = movie_url.rstrip('/') + '/videos'
-            print(f"Trying videos page: {videos_url}")
-            response = requests.get(videos_url, headers=self.headers, timeout=5)
-            if response.status_code == 200:
-                videos_soup = BeautifulSoup(response.content, 'html.parser')
-                
-                # Look for YouTube iframe
-                iframe = videos_soup.find('iframe', src=re.compile(r'youtube', re.I))
-                if iframe:
-                    src = iframe.get('src')
-                    video_id_match = re.search(r'(?:embed/|v=)([a-zA-Z0-9_-]{11})', src)
-                    if video_id_match:
-                        print(f"Found YouTube on videos page: {video_id_match.group(1)}")
-                        return f"https://www.youtube.com/watch?v={video_id_match.group(1)}"
-                
-                # Look for any video links on the page
-                for link in videos_soup.find_all('a', href=True):
-                    href = link.get('href')
-                    if 'youtube.com' in href or 'youtu.be' in href:
-                        video_id_match = re.search(r'(?:watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})', href)
-                        if video_id_match:
-                            print(f"Found YouTube link on videos page: {video_id_match.group(1)}")
-                            return f"https://www.youtube.com/watch?v={video_id_match.group(1)}"
-        except Exception as e:
-            print(f"Error fetching videos page: {e}")
-        
-        print("No trailer found")
-        return None
-    
     def _extract_photos(self, soup, movie_url):
-        """Extract movie photos - COMPREHENSIVE approach"""
+        """Extract movie photos from Flixster CDN and other sources"""
         print("Extracting photos...")
         photos = []
         seen = set()
         
-        # Exclusion keywords
-        exclude_keywords = ['newsletter', 'subscribe', 'logo', 'icon', 'sprite', 
-                           'placeholder', 'avatar', 'profile', 'user', 'button',
-                           'arrow', 'star', 'badge', 'award', 'certified', 'fresh',
-                           'rotten', 'header', 'footer', 'nav', 'menu', 'thumb']
+        # Exclusion keywords for UI elements
+        exclude_keywords = ['logo', 'icon', 'sprite', 'placeholder', 'avatar', 
+                           'profile', 'button', 'arrow', 'star', 'badge', 'award']
         
-        # Strategy 1: Target the pictures/photos page
+        def is_valid_image(url):
+            """Check if URL is a valid image"""
+            if not url or url in seen:
+                return False
+            
+            # Must be HTTP/HTTPS
+            if not url.startswith('http'):
+                return False
+            
+            # Filter out UI elements
+            url_lower = url.lower()
+            if any(kw in url_lower for kw in exclude_keywords):
+                return False
+            
+            # Accept Flixster CDN images (main source for RT)
+            if 'flixster.com' in url or 'rottentomatoes.com' in url:
+                return True
+            
+            # Accept common image formats
+            if any(ext in url_lower for ext in ['.jpg', '.jpeg', '.png', '.webp']):
+                return True
+            
+            return False
+        
+        # Strategy 1: Extract all img tags from main page
+        print("Checking main page images...")
+        for img in soup.find_all('img'):
+            # Try multiple attributes
+            for attr in ['data-src', 'src', 'data-lazy-src']:
+                src = img.get(attr)
+                if src:
+                    # Make absolute URL
+                    if src.startswith('//'):
+                        src = 'https:' + src
+                    elif src.startswith('/'):
+                        src = self.base_url + src
+                    
+                    if is_valid_image(src):
+                        photos.append(src)
+                        seen.add(src)
+                        print(f"Found photo: {src[:100]}...")
+        
+        # Strategy 2: Check srcset attributes
+        print("Checking srcset attributes...")
+        for elem in soup.find_all(['img', 'source'], srcset=True):
+            srcset = elem.get('srcset', '')
+            # Parse srcset - format: "url 1x, url 2x" or "url 100w, url 200w"
+            urls = re.findall(r'(https?://[^\s,]+)', srcset)
+            
+            for url in urls:
+                if is_valid_image(url):
+                    photos.append(url)
+                    seen.add(url)
+                    print(f"Found photo from srcset: {url[:100]}...")
+        
+        # Strategy 3: Try the pictures/photos pages
         for endpoint in ['/pictures', '/photos']:
             try:
                 photos_url = movie_url.rstrip('/') + endpoint
-                print(f"Trying photos page: {photos_url}")
+                print(f"Trying {endpoint} page: {photos_url}")
                 response = requests.get(photos_url, headers=self.headers, timeout=5)
                 
                 if response.status_code == 200:
                     photos_soup = BeautifulSoup(response.content, 'html.parser')
                     
-                    # Look for all images
+                    # Extract all images
                     for img in photos_soup.find_all('img'):
-                        src = img.get('data-src') or img.get('src')
-                        if not src:
-                            continue
-                        
-                        # Make absolute URL
-                        if src.startswith('//'):
-                            src = 'https:' + src
-                        elif src.startswith('/'):
-                            src = self.base_url + src
-                        
-                        if not src.startswith('http'):
-                            continue
-                        
-                        if src in seen:
-                            continue
-                        
-                        # Filter out UI elements
-                        if any(kw in src.lower() for kw in exclude_keywords):
-                            continue
-                        
-                        # Look for movie photos
-                        if any(indicator in src.lower() for indicator in ['gallery', 'still', 'photo', 'picture', 'original', 'nb_', 'content']):
-                            photos.append(src)
-                            seen.add(src)
-                            print(f"Found photo: {src[:80]}...")
-                        
-                        # Check dimensions in URL
-                        elif re.search(r'(\d{3,4})[x_](\d{3,4})', src):
-                            match = re.search(r'(\d{3,4})[x_](\d{3,4})', src)
-                            width, height = int(match.group(1)), int(match.group(2))
-                            if width >= 200 and height >= 200:
-                                photos.append(src)
-                                seen.add(src)
-                                print(f"Found photo: {src[:80]}...")
+                        for attr in ['data-src', 'src', 'data-lazy-src']:
+                            src = img.get(attr)
+                            if src:
+                                if src.startswith('//'):
+                                    src = 'https:' + src
+                                elif src.startswith('/'):
+                                    src = self.base_url + src
+                                
+                                if is_valid_image(src):
+                                    photos.append(src)
+                                    seen.add(src)
+                                    print(f"Found photo from {endpoint}: {src[:100]}...")
                     
-                    if photos:
-                        print(f"Found {len(photos)} photos on {endpoint} page")
+                    # Also check srcset on photos page
+                    for elem in photos_soup.find_all(['img', 'source'], srcset=True):
+                        srcset = elem.get('srcset', '')
+                        urls = re.findall(r'(https?://[^\s,]+)', srcset)
+                        for url in urls:
+                            if is_valid_image(url):
+                                photos.append(url)
+                                seen.add(url)
+                                print(f"Found photo from srcset on {endpoint}: {url[:100]}...")
+                    
+                    if len(photos) >= 10:
+                        print(f"Found enough photos from {endpoint} page, stopping...")
                         break
+                        
             except Exception as e:
                 print(f"Error fetching {endpoint} page: {e}")
         
-        # Strategy 2: Extract from main page if we don't have enough
-        if len(photos) < 5:
-            print("Extracting photos from main page...")
-            
-            # Look for poster/hero images
-            for img in soup.find_all('img'):
-                src = img.get('data-src') or img.get('src')
-                if not src:
-                    continue
+        # Strategy 4: Look in JSON-LD for images
+        print("Checking JSON-LD data...")
+        for script in soup.find_all('script', type='application/ld+json'):
+            try:
+                data = json.loads(script.string)
+                if isinstance(data, list):
+                    data = data[0] if data else {}
                 
-                if src.startswith('//'):
-                    src = 'https:' + src
-                elif src.startswith('/'):
-                    src = self.base_url + src
-                
-                if not src.startswith('http') or src in seen:
-                    continue
-                
-                if any(kw in src.lower() for kw in exclude_keywords):
-                    continue
-                
-                # Look for larger images
-                if any(indicator in src.lower() for indicator in ['poster', 'hero', 'original', 'large', '_m.', 'content']):
-                    photos.append(src)
-                    seen.add(src)
-                    print(f"Found photo from main page: {src[:80]}...")
-            
-            # Check srcset attributes
-            for elem in soup.find_all(['img', 'source'], srcset=True):
-                srcset = elem.get('srcset', '')
-                urls = [u.strip().split()[0] for u in srcset.split(',') if u.strip()]
-                
-                for url in urls:
-                    if url.startswith('//'):
-                        url = 'https:' + url
-                    elif url.startswith('/'):
-                        url = self.base_url + url
-                    
-                    if url.startswith('http') and url not in seen:
-                        if not any(kw in url.lower() for kw in exclude_keywords):
-                            photos.append(url)
-                            seen.add(url)
-                            print(f"Found photo from srcset: {url[:80]}...")
+                # Check for image or images field
+                for field in ['image', 'images']:
+                    if field in data:
+                        img_data = data[field]
+                        if isinstance(img_data, str):
+                            if is_valid_image(img_data):
+                                photos.append(img_data)
+                                seen.add(img_data)
+                        elif isinstance(img_data, list):
+                            for img in img_data:
+                                if isinstance(img, str) and is_valid_image(img):
+                                    photos.append(img)
+                                    seen.add(img)
+            except:
+                pass
         
         print(f"Total photos found: {len(photos)}")
-        return photos[:20]
+        return photos[:25]  # Return up to 25 photos
     
     def _extract_synopsis(self, soup):
         """Extract movie synopsis"""
@@ -552,7 +493,6 @@ class RottenTomatoesScraper:
                 'tomatometer': None,
                 'audience_score': None,
                 'image_url': None,
-                'trailer_url': None,
                 'photos': [],
                 'url': movie_url
             }
@@ -564,10 +504,6 @@ class RottenTomatoesScraper:
             # Extract synopsis
             if not movie_data['synopsis']:
                 movie_data['synopsis'] = self._extract_synopsis(soup)
-            
-            # Extract trailer
-            if not movie_data['trailer_url']:
-                movie_data['trailer_url'] = self._extract_trailer_url(soup, movie_url)
             
             # Extract photos
             movie_data['photos'] = self._extract_photos(soup, movie_url)
@@ -583,7 +519,6 @@ class RottenTomatoesScraper:
             
             print(f"\n✓ Extraction complete!")
             print(f"  - Title: {movie_data['title']}")
-            print(f"  - Trailer: {'Found' if movie_data['trailer_url'] else 'Not found'}")
             print(f"  - Photos: {len(movie_data['photos'])} found")
             
             return movie_data
