@@ -82,8 +82,12 @@ class RottenTomatoesScraper:
             ratings = {
                 'title': None,
                 'year': None,
+                'description': None,
                 'tomatometer': None,
                 'audience_score': None,
+                'casts': [],
+                'poster_url': None,
+                'backdrop_url': None,
                 'url': movie_url
             }
             
@@ -112,8 +116,28 @@ class RottenTomatoesScraper:
                         rating = data['aggregateRating']
                         if 'ratingValue' in rating:
                             ratings['tomatometer'] = f"{rating['ratingValue']}%"
-                except:
-                    pass
+                    if 'description' in data:
+                        ratings['description'] = data['description']
+                    if 'actors' in data:
+                        for actor in data['actors']:
+                            ratings['casts'].append({
+                                'actor': actor.get('name'),
+                                'character': None
+                            })
+                    if 'image' in data:
+                        ratings['poster_url'] = data['image']
+
+                    # Search for backdrop in other scripts
+                    media_hero_script = soup.find('script', {'id': 'media-hero-json'})
+                    if media_hero_script:
+                        try:
+                            media_hero_data = js.loads(media_hero_script.string)
+                            if 'backdropImage' in media_hero_data:
+                                ratings['backdrop_url'] = media_hero_data['backdropImage'].get('url')
+                        except js.JSONDecodeError as e:
+                            print(f"Error parsing media-hero-json: {e}")
+                except (KeyError, js.JSONDecodeError) as e:
+                    print(f"Error parsing JSON-LD: {e}")
             
             # Find all percentages
             all_percents = []
