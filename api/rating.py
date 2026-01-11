@@ -60,221 +60,211 @@ class RottenTomatoesScraper:
         except Exception as e:
             raise Exception(f"Search error: {str(e)}")
     
-    def _extract_trailer(self, soup):
-        """Extract trailer URL"""
-        # Method 1: Look for YouTube iframes
-        iframe = soup.find('iframe', src=re.compile(r'youtube\.com/embed|youtube-nocookie\.com/embed'))
-        if iframe:
-            return iframe.get('src')
+    def _extract_trailer_aggressive(self, soup, movie_url):
+        """AGGRESSIVE trailer extraction with multiple methods"""
         
-        # Method 2: Look for YouTube links
-        yt_link = soup.find('a', href=re.compile(r'youtube\.com/watch\?v=|youtu\.be/'))
-        if yt_link:
-            return yt_link.get('href')
+        # Method 1: Direct YouTube iframe
+        iframes = soup.find_all('iframe')
+        for iframe in iframes:
+            src = iframe.get('src', '')
+            if 'youtube' in src or 'youtube-nocookie' in src:
+                return src
         
-        # Method 3: Search for video data in script tags
+        # Method 2: YouTube links
+        links = soup.find_all('a', href=True)
+        for link in links:
+            href = link.get('href', '')
+            if 'youtube.com/watch' in href or 'youtu.be/' in href:
+                return href
+        
+        # Method 3: Check all script tags for YouTube URLs
         scripts = soup.find_all('script')
         for script in scripts:
             if script.string:
-                # Look for YouTube video IDs in scripts
-                match = re.search(r'youtube\.com/watch\?v=([a-zA-Z0-9_-]+)', script.string)
-                if match:
-                    return f"https://www.youtube.com/watch?v={match.group(1)}"
+                # Look for YouTube video IDs
+                yt_matches = re.findall(r'(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/)([a-zA-Z0-9_-]{11})', script.string)
+                if yt_matches:
+                    return f"https://www.youtube.com/watch?v={yt_matches[0]}"
+        
+        # Method 4: Look for data attributes
+        video_elements = soup.find_all(attrs={'data-video': True})
+        for elem in video_elements:
+            video_data = elem.get('data-video')
+            if video_data and 'youtube' in video_data:
+                return video_data
+        
+        # Method 5: Try to fetch from the movie's videos page
+        try:
+            videos_url = movie_url.rstrip('/') + '/videos'
+            response = requests.get(videos_url, headers=self.headers, timeout=5)
+            if response.status_code == 200:
+                videos_soup = BeautifulSoup(response.content, 'html.parser')
+                iframe = videos_soup.find('iframe', src=re.compile(r'youtube'))
+                if iframe:
+                    return iframe.get('src')
+        except:
+            pass
         
         return None
     
-    def _extract_photos(self, soup):
-        """Extract photo gallery - get actual movie stills/photos"""
+    def _extract_photos_aggressive(self, soup, movie_url):
+        """AGGRESSIVE photo extraction"""
         photos = []
-        seen_urls = set()
+        seen = set()
         
-        # Patterns to exclude
-        exclude = ['newsletter', 'subscribe', 'logo', 'icon', 'sprite', 
-                   'placeholder', 'avatar', 'profile', 'user']
+        # Exclusion keywords
+        exclude_keywords = ['newsletter', 'subscribe', 'logo', 'icon', 'sprite', 
+                           'placeholder', 'avatar', 'profile', 'user', 'button',
+                           'arrow', 'star', 'badge', 'award']
         
-        # Method 1: Look for picture elements (modern RT)
-        pictures = soup.find_all('picture')
-        for pic in pictures:
-            sources = pic.find_all('source')
-            for source in sources:
-                srcset = source.get('srcset')
+        # Method 1: All picture elements
+        for picture in soup.find_all('picture'):
+            # Try source srcset
+            for source in picture.find_all('source'):
+                srcset = source.get('srcset', '')
                 if srcset:
-                    # Get highest quality image from srcset
-                    urls = [url.strip().split(' ')[0] for url in srcset.split(',')]
+                    urls = [u.strip().split()[0] for u in srcset.split(',') if u.strip()]
                     for url in urls:
-                        if url and url.startswith('http') and url not in seen_urls:
-                            if not any(ex in url.lower() for ex in exclude):
-                                photos.append(url)
-                                seen_urls.add(url)
-                                break
+                        if url.startswith('http') and url not in seen:
+                            if not any(kw in url.lower() for kw in exclude_keywords):
+                                if any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp']):
+                                    photos.append(url)
+                                    seen.add(url)
+            
+            # Try img inside picture
+            img = picture.find('img')
+            if img:
+                src = img.get('src') or img.get('data-src')
+                if src and src.startswith('http') and src not in seen:
+                    if not any(kw in src.lower() for kw in exclude_keywords):
+                        photos.append(src)
+                        seen.add(src)
         
-        # Method 2: Look for img tags with high-res movie images
-        imgs = soup.find_all('img')
-        for img in imgs:
-            # Get src or data-src
-            src = img.get('data-src') or img.get('src')
+        # Method 2: All img tags
+        for img in soup.find_all('img'):
+            src = img.get('data-src') or img.get('src') or img.get('data-lazy-src')
             if not src or not src.startswith('http'):
                 continue
             
-            # Skip excluded patterns
-            if any(ex in src.lower() for ex in exclude):
+            if src in seen:
                 continue
             
-            # Check if it's a content image (not UI element)
-            classes = ' '.join(img.get('class', [])).lower()
-            if any(word in classes for word in ['poster', 'still', 'photo', 'gallery', 'image']):
-                if src not in seen_urls:
-                    photos.append(src)
-                    seen_urls.add(src)
-        
-        # Method 3: Look for background images in style attributes
-        styled_divs = soup.find_all(attrs={'style': re.compile(r'background-image')})
-        for div in styled_divs:
-            style = div.get('style', '')
-            match = re.search(r'url\(["\']?([^"\']+)["\']?\)', style)
-            if match:
-                url = match.group(1)
-                if url.startswith('http') and url not in seen_urls:
-                    if not any(ex in url.lower() for ex in exclude):
-                        photos.append(url)
-                        seen_urls.add(url)
-        
-        return photos[:10]  # Limit to 10
-    
-    def _extract_synopsis_smart(self, soup, movie_data):
-        """Smart synopsis extraction with multiple fallbacks"""
-        synopsis = None
-        
-        # Method 1: Look for specific synopsis containers
-        synopsis_containers = [
-            soup.find('div', {'data-qa': 'movie-info-synopsis'}),
-            soup.find('div', {'id': 'movieSynopsis'}),
-            soup.find('div', class_=re.compile(r'movie.*synopsis')),
-            soup.find('p', class_=re.compile(r'synopsis')),
-        ]
-        
-        for container in synopsis_containers:
-            if container:
-                text = container.get_text(separator=' ', strip=True)
-                # Clean up
-                text = re.sub(r'\s+', ' ', text)
-                
-                # Remove common RT additions
-                text = re.sub(r'(Read )?the critic reviews.*$', '', text, flags=re.IGNORECASE)
-                text = re.sub(r'What to Watch.*$', '', text, flags=re.IGNORECASE)
-                
-                if text and len(text) > 50 and 'newsletter' not in text.lower():
-                    synopsis = text.strip()
-                    break
-        
-        # Method 2: Try getting from structured data
-        if not synopsis:
-            scripts = soup.find_all('script', type='application/ld+json')
-            for script in scripts:
-                try:
-                    data = json.loads(script.string)
-                    if isinstance(data, list):
-                        data = data[0]
-                    if 'description' in data:
-                        desc = data['description']
-                        if len(desc) > 50 and 'newsletter' not in desc.lower():
-                            synopsis = desc
-                            break
-                except:
-                    pass
-        
-        # Method 3: Look in meta tags
-        if not synopsis:
-            meta_desc = soup.find('meta', {'name': 'description'}) or \
-                       soup.find('meta', {'property': 'og:description'})
-            if meta_desc:
-                desc = meta_desc.get('content', '')
-                if len(desc) > 50 and 'newsletter' not in desc.lower():
-                    synopsis = desc
-        
-        # Method 4: Find longest paragraph in main content
-        if not synopsis:
-            main = soup.find('main') or soup.find('article') or soup.find('div', id='main')
-            if main:
-                paragraphs = main.find_all('p')
-                for p in paragraphs:
-                    text = p.get_text(strip=True)
-                    if len(text) > 100 and 'newsletter' not in text.lower():
-                        # Check it's not navigation or UI text
-                        if not any(word in text.lower() for word in ['click here', 'sign up', 'subscribe', 'follow us']):
-                            synopsis = text
-                            break
-        
-        return synopsis
-    
-    def _extract_movie_info_comprehensive(self, soup):
-        """Comprehensive extraction of all movie metadata"""
-        info = {}
-        
-        # Find all text on the page
-        page_text = soup.get_text()
-        
-        # Method 1: Look for labeled data (RT uses various structures)
-        # Common pattern: "Label: Value" or "Label Value"
-        
-        patterns = {
-            'producer': r'Producer[s]?[:\s]+([^\n\r]+?)(?=\n|Director|Writer|$)',
-            'screenwriter': r'(?:Screenwriter|Writer)[s]?[:\s]+([^\n\r]+?)(?=\n|Director|Producer|$)',
-            'distributor': r'Distributor[:\s]+([^\n\r]+?)(?=\n|$)',
-            'production_co': r'Production\s+Co[:\s]+([^\n\r]+?)(?=\n|$)',
-            'original_language': r'Original\s+Language[:\s]+([^\n\r]+?)(?=\n|$)',
-            'release_date_theaters': r'(?:Release\s+Date\s+\(Theaters?\)|In\s+Theaters?)[:\s]+([^\n\r]+?)(?=\n|$)',
-            'release_date_streaming': r'(?:Release\s+Date\s+\(Streaming\)|Streaming)[:\s]+([^\n\r]+?)(?=\n|$)',
-            'box_office_usa': r'Box\s+Office\s+\(Gross\s+USA\)[:\s]+([^\n\r]+?)(?=\n|$)',
-            'sound_mix': r'Sound\s+Mix[:\s]+([^\n\r]+?)(?=\n|$)',
-            'aspect_ratio': r'Aspect\s+Ratio[:\s]+([^\n\r]+?)(?=\n|$)',
-        }
-        
-        for key, pattern in patterns.items():
-            match = re.search(pattern, page_text, re.IGNORECASE | re.MULTILINE)
-            if match:
-                value = match.group(1).strip()
-                # Clean up the value
-                value = re.sub(r'\s+', ' ', value)
-                # Remove trailing punctuation
-                value = value.rstrip('.,;')
-                if value and len(value) > 1:
-                    info[key] = value
-        
-        # Method 2: Look for dl/dt/dd structures
-        dls = soup.find_all('dl')
-        for dl in dls:
-            dts = dl.find_all('dt')
-            for dt in dts:
-                label = dt.get_text(strip=True).lower()
-                dd = dt.find_next_sibling('dd')
-                if dd:
-                    value = dd.get_text(strip=True)
-                    
-                    if 'producer' in label and 'producer' not in info:
-                        info['producer'] = value
-                    elif ('writer' in label or 'screenwriter' in label) and 'screenwriter' not in info:
-                        info['screenwriter'] = value
-                    elif 'distributor' in label and 'distributor' not in info:
-                        info['distributor'] = value
-                    elif 'production' in label and 'production_co' not in info:
-                        info['production_co'] = value
-                    elif 'language' in label and 'original_language' not in info:
-                        info['original_language'] = value
-        
-        # Method 3: Look for divs with specific attributes
-        info_divs = soup.find_all('div', attrs={'data-qa': re.compile(r'movie-info')})
-        for div in info_divs:
-            text = div.get_text()
+            # Filter out small images by checking natural size or file path
+            if any(kw in src.lower() for kw in exclude_keywords):
+                continue
             
-            # Try to extract from this div
-            for key, pattern in patterns.items():
-                if key not in info:
-                    match = re.search(pattern, text, re.IGNORECASE)
-                    if match:
-                        info[key] = match.group(1).strip()
+            # Look for high-quality images
+            if any(indicator in src.lower() for indicator in ['original', 'large', '1920', '1080', '720', 'gallery', 'still']):
+                photos.append(src)
+                seen.add(src)
+            elif re.search(r'\d{3,4}x\d{3,4}', src):  # Has dimensions like 1920x1080
+                photos.append(src)
+                seen.add(src)
+            elif len(photos) < 5:  # If we don't have many, be less strict
+                photos.append(src)
+                seen.add(src)
         
-        return info
+        # Method 3: Check style attributes for background images
+        for elem in soup.find_all(attrs={'style': True}):
+            style = elem.get('style', '')
+            if 'background-image' in style:
+                match = re.search(r'url\(["\']?([^"\'()]+)["\']?\)', style)
+                if match:
+                    url = match.group(1)
+                    if url.startswith('http') and url not in seen:
+                        if not any(kw in url.lower() for kw in exclude_keywords):
+                            photos.append(url)
+                            seen.add(url)
+        
+        # Method 4: Try accessing the photos page
+        try:
+            photos_url = movie_url.rstrip('/') + '/pictures'
+            response = requests.get(photos_url, headers=self.headers, timeout=5)
+            if response.status_code == 200:
+                photos_soup = BeautifulSoup(response.content, 'html.parser')
+                for img in photos_soup.find_all('img'):
+                    src = img.get('src') or img.get('data-src')
+                    if src and src.startswith('http') and src not in seen:
+                        if not any(kw in src.lower() for kw in exclude_keywords):
+                            photos.append(src)
+                            seen.add(src)
+        except:
+            pass
+        
+        return photos[:15]  # Return up to 15 photos
+    
+    def _extract_synopsis_aggressive(self, soup):
+        """AGGRESSIVE synopsis extraction"""
+        
+        # Bad words that indicate it's not the real synopsis
+        bad_indicators = ['newsletter', 'subscribe', 'sign up', 'follow us', 
+                         'download', 'app store', 'google play', 'certified fresh',
+                         'discover rotten tomatoes', 'what to watch']
+        
+        candidates = []
+        
+        # Method 1: Look for any element with "synopsis" in class or id
+        synopsis_elements = soup.find_all(['div', 'p', 'section'], 
+                                         class_=re.compile(r'synopsis|plot|summary|description', re.I))
+        synopsis_elements += soup.find_all(['div', 'p', 'section'], 
+                                          id=re.compile(r'synopsis|plot|summary|description', re.I))
+        
+        for elem in synopsis_elements:
+            text = elem.get_text(separator=' ', strip=True)
+            text = re.sub(r'\s+', ' ', text)
+            
+            if len(text) > 50 and not any(bad in text.lower() for bad in bad_indicators):
+                candidates.append((len(text), text))
+        
+        # Method 2: JSON-LD structured data
+        for script in soup.find_all('script', type='application/ld+json'):
+            try:
+                data = json.loads(script.string)
+                if isinstance(data, list):
+                    data = data[0]
+                if 'description' in data:
+                    desc = data['description']
+                    if len(desc) > 50 and not any(bad in desc.lower() for bad in bad_indicators):
+                        candidates.append((len(desc), desc))
+            except:
+                pass
+        
+        # Method 3: Meta tags
+        for meta in soup.find_all('meta'):
+            if meta.get('name') in ['description', 'og:description'] or meta.get('property') == 'og:description':
+                content = meta.get('content', '')
+                if len(content) > 50 and not any(bad in content.lower() for bad in bad_indicators):
+                    candidates.append((len(content), content))
+        
+        # Method 4: Find all paragraphs and pick the longest meaningful one
+        for p in soup.find_all('p'):
+            text = p.get_text(strip=True)
+            if len(text) > 100:
+                # Check if it's actual content (not UI text)
+                text_lower = text.lower()
+                if not any(bad in text_lower for bad in bad_indicators):
+                    # Check if it doesn't have too many links (navigation)
+                    links = p.find_all('a')
+                    if len(links) < 3:  # Real synopsis shouldn't have many links
+                        candidates.append((len(text), text))
+        
+        # Method 5: Look in specific data attributes
+        for elem in soup.find_all(attrs={'data-qa': re.compile(r'synopsis|description', re.I)}):
+            text = elem.get_text(strip=True)
+            if len(text) > 50 and not any(bad in text.lower() for bad in bad_indicators):
+                candidates.append((len(text), text))
+        
+        # Sort by length and return the longest valid one
+        if candidates:
+            candidates.sort(reverse=True)
+            # Return the longest one between 100-2000 characters (typical synopsis length)
+            for length, text in candidates:
+                if 100 <= length <= 2000:
+                    return text
+            # If nothing in that range, return the longest
+            return candidates[0][1]
+        
+        return None
     
     def _extract_from_json_ld(self, soup, movie_data):
         """Extract from JSON-LD"""
@@ -286,7 +276,6 @@ class RottenTomatoesScraper:
                 if isinstance(data, list):
                     data = data[0] if data else {}
                 
-                # Basic fields
                 if 'name' in data and not movie_data['title']:
                     movie_data['title'] = data['name']
                 
@@ -320,7 +309,7 @@ class RottenTomatoesScraper:
                     if isinstance(actors, list):
                         movie_data['cast'] = [
                             a.get('name', str(a)) if isinstance(a, dict) else str(a)
-                            for a in actors[:20]  # Limit cast
+                            for a in actors[:20]
                         ]
                 
                 if 'aggregateRating' in data and not movie_data['tomatometer']:
@@ -408,6 +397,35 @@ class RottenTomatoesScraper:
         if not movie_data['audience_score']:
             movie_data['audience_score'] = "N/A"
     
+    def _extract_movie_info_comprehensive(self, soup):
+        """Extract movie metadata"""
+        info = {}
+        page_text = soup.get_text()
+        
+        patterns = {
+            'producer': r'Producer[s]?[:\s]+([^\n\r]+?)(?=\n|Director|Writer|$)',
+            'screenwriter': r'(?:Screenwriter|Writer)[s]?[:\s]+([^\n\r]+?)(?=\n|Director|Producer|$)',
+            'distributor': r'Distributor[:\s]+([^\n\r]+?)(?=\n|$)',
+            'production_co': r'Production\s+Co[:\s]+([^\n\r]+?)(?=\n|$)',
+            'original_language': r'Original\s+Language[:\s]+([^\n\r]+?)(?=\n|$)',
+            'release_date_theaters': r'(?:Release\s+Date\s+\(Theaters?\)|In\s+Theaters?)[:\s]+([^\n\r]+?)(?=\n|$)',
+            'release_date_streaming': r'(?:Release\s+Date\s+\(Streaming\)|Streaming)[:\s]+([^\n\r]+?)(?=\n|$)',
+            'box_office_usa': r'Box\s+Office\s+\(Gross\s+USA\)[:\s]+([^\n\r]+?)(?=\n|$)',
+            'sound_mix': r'Sound\s+Mix[:\s]+([^\n\r]+?)(?=\n|$)',
+            'aspect_ratio': r'Aspect\s+Ratio[:\s]+([^\n\r]+?)(?=\n|$)',
+        }
+        
+        for key, pattern in patterns.items():
+            match = re.search(pattern, page_text, re.IGNORECASE | re.MULTILINE)
+            if match:
+                value = match.group(1).strip()
+                value = re.sub(r'\s+', ' ', value)
+                value = value.rstrip('.,;')
+                if value and len(value) > 1:
+                    info[key] = value
+        
+        return info
+    
     def get_all_movie_data(self, movie_url):
         """Get all movie data"""
         try:
@@ -448,22 +466,21 @@ class RottenTomatoesScraper:
             movie_data = self._extract_from_json_ld(soup, movie_data)
             movie_data = self._extract_from_html(soup, movie_data)
             
-            # Synopsis
+            # AGGRESSIVE extraction for the problematic fields
             if not movie_data['synopsis']:
-                movie_data['synopsis'] = self._extract_synopsis_smart(soup, movie_data)
+                movie_data['synopsis'] = self._extract_synopsis_aggressive(soup)
+            
+            if not movie_data['trailer_url']:
+                movie_data['trailer_url'] = self._extract_trailer_aggressive(soup, movie_url)
+            
+            if not movie_data['photos'] or len(movie_data['photos']) < 2:
+                movie_data['photos'] = self._extract_photos_aggressive(soup, movie_url)
             
             # Movie info
             info = self._extract_movie_info_comprehensive(soup)
             for key, value in info.items():
                 if not movie_data.get(key):
                     movie_data[key] = value
-            
-            # Media
-            if not movie_data['trailer_url']:
-                movie_data['trailer_url'] = self._extract_trailer(soup)
-            
-            if not movie_data['photos'] or len(movie_data['photos']) < 2:
-                movie_data['photos'] = self._extract_photos(soup)
             
             return movie_data
             
