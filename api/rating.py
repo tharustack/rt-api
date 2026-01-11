@@ -62,116 +62,208 @@ class RottenTomatoesScraper:
     
     def _extract_trailer(self, soup):
         """Extract trailer URL from page"""
-        # Look for YouTube embed or video player
+        # Look for YouTube embed
         iframe = soup.find('iframe', src=re.compile(r'youtube|vimeo'))
         if iframe:
             return iframe.get('src')
         
         # Look for video links
-        video_link = soup.find('a', href=re.compile(r'youtube\.com|youtu\.be'))
+        video_link = soup.find('a', href=re.compile(r'youtube\.com/watch|youtu\.be'))
         if video_link:
             return video_link.get('href')
+        
+        # Look for data attributes with video URLs
+        video_elements = soup.find_all(attrs={'data-video-url': True})
+        if video_elements:
+            return video_elements[0].get('data-video-url')
         
         return None
     
     def _extract_photos(self, soup):
-        """Extract photo gallery URLs"""
+        """Extract movie photo gallery URLs - filtering out ads and newsletters"""
         photos = []
+        seen_urls = set()
         
-        # Look for gallery images
-        gallery_imgs = soup.find_all('img', src=re.compile(r'(cloudfront|image|photo|gallery)'))
+        # Exclusion patterns for unwanted images
+        exclude_patterns = [
+            'newsletter', 'subscribe', 'logo', 'icon', 'avatar',
+            'ad', 'banner', 'promo', 'email', 'footer', 'header',
+            'social', 'facebook', 'twitter', 'instagram'
+        ]
         
-        for img in gallery_imgs[:10]:  # Limit to 10 photos
-            src = img.get('src') or img.get('data-src')
-            if src and src.startswith('http') and 'logo' not in src.lower():
-                photos.append(src)
+        # Look for images in the main content area
+        main_content = soup.find('main') or soup.find('div', class_=re.compile(r'content|main'))
         
-        return list(set(photos))  # Remove duplicates
+        if main_content:
+            # Find all images
+            images = main_content.find_all('img')
+            
+            for img in images:
+                src = img.get('src') or img.get('data-src') or img.get('data-lazy-src')
+                
+                if not src:
+                    continue
+                
+                # Skip if not a full URL
+                if not src.startswith('http'):
+                    continue
+                
+                # Skip small images (likely icons)
+                width = img.get('width')
+                height = img.get('height')
+                if width and height:
+                    try:
+                        if int(width) < 200 or int(height) < 200:
+                            continue
+                    except:
+                        pass
+                
+                # Check URL for exclusion patterns
+                src_lower = src.lower()
+                if any(pattern in src_lower for pattern in exclude_patterns):
+                    continue
+                
+                # Check alt text for exclusion patterns
+                alt = (img.get('alt') or '').lower()
+                if any(pattern in alt for pattern in exclude_patterns):
+                    continue
+                
+                # Check if we've seen this URL
+                if src in seen_urls:
+                    continue
+                
+                # Check if it's a valid image URL
+                if any(ext in src_lower for ext in ['.jpg', '.jpeg', '.png', '.webp']):
+                    photos.append(src)
+                    seen_urls.add(src)
+                    
+                    if len(photos) >= 10:
+                        break
+        
+        return photos
     
-    def _extract_movie_info(self, soup):
-        """Extract detailed movie information from the info section"""
+    def _extract_movie_info_detailed(self, soup):
+        """Extract detailed movie information - better targeted extraction"""
         info = {}
         
-        # Look for info sections - common patterns on RT
-        info_section = soup.find('section', {'data-qa': 'movie-info-section'}) or \
-                      soup.find('div', class_=re.compile(r'movie.*info|info.*section'))
+        # Try to find the movie info section more precisely
+        # RT often uses these patterns
+        info_sections = [
+            soup.find('section', attrs={'data-qa': 'movie-info-section'}),
+            soup.find('div', class_=re.compile(r'movie-info')),
+            soup.find('div', id=re.compile(r'info|details')),
+        ]
+        
+        info_section = None
+        for section in info_sections:
+            if section:
+                info_section = section
+                break
         
         if info_section:
-            # Extract all text content
-            all_text = info_section.get_text()
+            # Look for dt/dd pairs (definition list)
+            dts = info_section.find_all('dt')
+            for dt in dts:
+                label = dt.get_text().strip().lower()
+                dd = dt.find_next_sibling('dd')
+                
+                if not dd:
+                    continue
+                
+                value = dd.get_text().strip()
+                
+                if 'producer' in label and not info.get('producer'):
+                    info['producer'] = value
+                elif 'writer' in label or 'screenwriter' in label:
+                    if not info.get('screenwriter'):
+                        info['screenwriter'] = value
+                elif 'distributor' in label and not info.get('distributor'):
+                    info['distributor'] = value
+                elif 'production' in label and 'co' in label:
+                    if not info.get('production_co'):
+                        info['production_co'] = value
+                elif 'language' in label and 'original' in label:
+                    if not info.get('original_language'):
+                        info['original_language'] = value
+                elif 'release' in label and 'theater' in label:
+                    if 'rerelease' in label:
+                        info['rerelease_date'] = value
+                    elif not info.get('release_date_theaters'):
+                        info['release_date_theaters'] = value
+                elif 'release' in label and 'streaming' in label:
+                    if not info.get('release_date_streaming'):
+                        info['release_date_streaming'] = value
+                elif 'box office' in label:
+                    if not info.get('box_office_usa'):
+                        info['box_office_usa'] = value
+                elif 'sound' in label and 'mix' in label:
+                    if not info.get('sound_mix'):
+                        info['sound_mix'] = value
+                elif 'aspect' in label and 'ratio' in label:
+                    if not info.get('aspect_ratio'):
+                        info['aspect_ratio'] = value
             
-            # Producer
-            producer_match = re.search(r'Producer[s]?[:\s]+([^\n]+)', all_text, re.IGNORECASE)
-            if producer_match:
-                info['producer'] = producer_match.group(1).strip()
-            
-            # Screenwriter
-            writer_match = re.search(r'(Screenwriter|Writer)[s]?[:\s]+([^\n]+)', all_text, re.IGNORECASE)
-            if writer_match:
-                info['screenwriter'] = writer_match.group(2).strip()
-            
-            # Distributor
-            dist_match = re.search(r'Distributor[s]?[:\s]+([^\n]+)', all_text, re.IGNORECASE)
-            if dist_match:
-                info['distributor'] = dist_match.group(1).strip()
-            
-            # Production Company
-            prod_match = re.search(r'Production\s+Co[:\s]+([^\n]+)', all_text, re.IGNORECASE)
-            if prod_match:
-                info['production_co'] = prod_match.group(1).strip()
-            
-            # Original Language
-            lang_match = re.search(r'Original\s+Language[:\s]+([^\n]+)', all_text, re.IGNORECASE)
-            if lang_match:
-                info['original_language'] = lang_match.group(1).strip()
-            
-            # Release Dates
-            theater_match = re.search(r'Release\s+Date\s+\(Theater[s]?\)[:\s]+([^\n]+)', all_text, re.IGNORECASE)
-            if theater_match:
-                info['release_date_theaters'] = theater_match.group(1).strip()
-            
-            rerelease_match = re.search(r'Rerelease\s+Date[:\s]+([^\n]+)', all_text, re.IGNORECASE)
-            if rerelease_match:
-                info['rerelease_date'] = rerelease_match.group(1).strip()
-            
-            streaming_match = re.search(r'Release\s+Date\s+\(Streaming\)[:\s]+([^\n]+)', all_text, re.IGNORECASE)
-            if streaming_match:
-                info['release_date_streaming'] = streaming_match.group(1).strip()
-            
-            # Box Office
-            box_office_match = re.search(r'Box\s+Office\s+\(Gross\s+USA\)[:\s]+([^\n]+)', all_text, re.IGNORECASE)
-            if box_office_match:
-                info['box_office_usa'] = box_office_match.group(1).strip()
-            
-            # Sound Mix
-            sound_match = re.search(r'Sound\s+Mix[:\s]+([^\n]+)', all_text, re.IGNORECASE)
-            if sound_match:
-                info['sound_mix'] = sound_match.group(1).strip()
-            
-            # Aspect Ratio
-            aspect_match = re.search(r'Aspect\s+Ratio[:\s]+([^\n]+)', all_text, re.IGNORECASE)
-            if aspect_match:
-                info['aspect_ratio'] = aspect_match.group(1).strip()
-        
-        # Also try structured approach - look for dt/dd pairs
-        info_items = soup.find_all(['dt', 'dd', 'div'], class_=re.compile(r'info|meta|detail'))
-        
-        for i, item in enumerate(info_items):
-            text = item.get_text().strip()
-            
-            if 'producer' in text.lower() and i + 1 < len(info_items):
-                if not info.get('producer'):
-                    info['producer'] = info_items[i + 1].get_text().strip()
-            
-            elif 'screenwriter' in text.lower() or 'writer' in text.lower():
-                if i + 1 < len(info_items) and not info.get('screenwriter'):
-                    info['screenwriter'] = info_items[i + 1].get_text().strip()
-            
-            elif 'distributor' in text.lower() and i + 1 < len(info_items):
-                if not info.get('distributor'):
-                    info['distributor'] = info_items[i + 1].get_text().strip()
+            # Also try div-based structure
+            divs = info_section.find_all('div', class_=re.compile(r'info-item|detail|meta'))
+            for div in divs:
+                text = div.get_text()
+                
+                # Use regex to extract label: value pairs
+                if 'Producer' in text and not info.get('producer'):
+                    match = re.search(r'Producer[s]?:\s*([^\n]+)', text)
+                    if match:
+                        info['producer'] = match.group(1).strip()
+                
+                if ('Writer' in text or 'Screenwriter' in text) and not info.get('screenwriter'):
+                    match = re.search(r'(?:Screenwriter|Writer)[s]?:\s*([^\n]+)', text)
+                    if match:
+                        info['screenwriter'] = match.group(1).strip()
+                
+                if 'Distributor' in text and not info.get('distributor'):
+                    match = re.search(r'Distributor:\s*([^\n]+)', text)
+                    if match:
+                        info['distributor'] = match.group(1).strip()
         
         return info
+    
+    def _clean_synopsis(self, text):
+        """Clean synopsis text - remove RT promotional content"""
+        if not text:
+            return None
+        
+        # Common RT promo phrases to remove
+        promo_phrases = [
+            'discover rotten tomatoes',
+            'sign up for rotten tomatoes',
+            'subscribe to',
+            'newsletter',
+            'follow us',
+            'download the app',
+            'rate and review',
+            'what to watch',
+            'certified fresh',
+        ]
+        
+        text_lower = text.lower()
+        
+        # If the text is mostly promotional, return None
+        if any(phrase in text_lower for phrase in promo_phrases):
+            # Check if there's actual content before the promo
+            sentences = text.split('.')
+            clean_sentences = []
+            
+            for sentence in sentences:
+                sentence_lower = sentence.lower().strip()
+                if not any(phrase in sentence_lower for phrase in promo_phrases):
+                    if len(sentence.strip()) > 20:  # Meaningful sentence
+                        clean_sentences.append(sentence.strip())
+            
+            if clean_sentences:
+                return '. '.join(clean_sentences) + '.'
+            else:
+                return None
+        
+        return text.strip()
     
     def _extract_from_json_ld(self, soup, movie_data):
         """Extract data from JSON-LD structured data"""
@@ -188,16 +280,19 @@ class RottenTomatoesScraper:
                     movie_data['title'] = data['name']
                 
                 if 'description' in data and not movie_data['synopsis']:
-                    movie_data['synopsis'] = data['description']
+                    cleaned = self._clean_synopsis(data['description'])
+                    if cleaned:
+                        movie_data['synopsis'] = cleaned
                 
                 if 'image' in data and not movie_data['image_url']:
                     img = data['image']
                     movie_data['image_url'] = img if isinstance(img, str) else img[0] if isinstance(img, list) else None
                 
-                if 'datePublished' in data and not movie_data['release_date_theaters']:
-                    movie_data['release_date_theaters'] = data['datePublished']
+                if 'datePublished' in data:
+                    if not movie_data['release_date_theaters']:
+                        movie_data['release_date_theaters'] = data['datePublished']
                     year_match = re.search(r'(19|20)\d{2}', str(data['datePublished']))
-                    if year_match:
+                    if year_match and not movie_data['year']:
                         movie_data['year'] = year_match.group(0)
                 
                 if 'genre' in data and not movie_data['genres']:
@@ -212,6 +307,24 @@ class RottenTomatoesScraper:
                         movie_data['director'] = director[0].get('name', str(director[0])) if isinstance(director[0], dict) else str(director[0])
                     elif isinstance(director, str):
                         movie_data['director'] = director
+                
+                # Extract producer from JSON-LD
+                if 'producer' in data and not movie_data['producer']:
+                    producer = data['producer']
+                    if isinstance(producer, dict) and 'name' in producer:
+                        movie_data['producer'] = producer['name']
+                    elif isinstance(producer, list):
+                        names = [p.get('name', str(p)) if isinstance(p, dict) else str(p) for p in producer]
+                        movie_data['producer'] = ', '.join(names[:3])  # First 3 producers
+                
+                # Extract creator/screenwriter from JSON-LD
+                if 'creator' in data and not movie_data['screenwriter']:
+                    creator = data['creator']
+                    if isinstance(creator, dict) and 'name' in creator:
+                        movie_data['screenwriter'] = creator['name']
+                    elif isinstance(creator, list):
+                        names = [c.get('name', str(c)) if isinstance(c, dict) else str(c) for c in creator]
+                        movie_data['screenwriter'] = ', '.join(names[:3])
                 
                 if 'actor' in data and not movie_data['cast']:
                     actors = data['actor']
@@ -242,16 +355,23 @@ class RottenTomatoesScraper:
         if not movie_data['synopsis']:
             og_desc = soup.find('meta', property='og:description')
             if og_desc:
-                movie_data['synopsis'] = og_desc.get('content', '').strip()
+                cleaned = self._clean_synopsis(og_desc.get('content', '').strip())
+                if cleaned:
+                    movie_data['synopsis'] = cleaned
             else:
                 meta_desc = soup.find('meta', attrs={'name': 'description'})
                 if meta_desc:
-                    movie_data['synopsis'] = meta_desc.get('content', '').strip()
+                    cleaned = self._clean_synopsis(meta_desc.get('content', '').strip())
+                    if cleaned:
+                        movie_data['synopsis'] = cleaned
         
         if not movie_data['image_url']:
             og_image = soup.find('meta', property='og:image')
             if og_image:
-                movie_data['image_url'] = og_image.get('content', '').strip()
+                img_url = og_image.get('content', '').strip()
+                # Validate it's not a generic/newsletter image
+                if img_url and 'newsletter' not in img_url.lower():
+                    movie_data['image_url'] = img_url
         
         return movie_data
     
@@ -288,6 +408,22 @@ class RottenTomatoesScraper:
             rating_match = rating_pattern.search(soup.get_text())
             if rating_match:
                 movie_data['rating'] = rating_match.group(1)
+        
+        # Extract synopsis from specific sections
+        if not movie_data['synopsis']:
+            synopsis_selectors = [
+                soup.find('div', attrs={'data-qa': 'synopsis'}),
+                soup.find('div', class_=re.compile(r'synopsis|plot|summary')),
+                soup.find('p', class_=re.compile(r'synopsis|plot'))
+            ]
+            
+            for selector in synopsis_selectors:
+                if selector:
+                    text = selector.get_text().strip()
+                    cleaned = self._clean_synopsis(text)
+                    if cleaned and len(cleaned) > 50:
+                        movie_data['synopsis'] = cleaned
+                        break
         
         self._extract_scores(soup, movie_data)
         
@@ -384,8 +520,8 @@ class RottenTomatoesScraper:
             movie_data = self._extract_from_meta_tags(soup, movie_data)
             movie_data = self._extract_from_html(soup, movie_data)
             
-            # Extract additional info
-            movie_info = self._extract_movie_info(soup)
+            # Extract detailed movie info
+            movie_info = self._extract_movie_info_detailed(soup)
             for key, value in movie_info.items():
                 if not movie_data.get(key):
                     movie_data[key] = value
