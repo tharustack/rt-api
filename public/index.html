@@ -3,100 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rotten Tomatoes API Test</title>
+    <title>Rotten Tomatoes Movie Search</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
+            padding: 40px 0;
         }
         
-        .container {
+        .main-card {
             background: white;
-            padding: 40px;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 600px;
-            width: 100%;
+            overflow: hidden;
         }
         
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 2em;
-        }
-        
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 0.9em;
-        }
-        
-        .search-box {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 30px;
-        }
-        
-        input {
-            flex: 1;
-            padding: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 16px;
-            transition: all 0.3s;
-        }
-        
-        input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        button {
-            padding: 15px 30px;
+        .header-section {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        
-        button:hover {
-            transform: translateY(-2px);
-        }
-        
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .loading {
+            padding: 30px;
             text-align: center;
-            color: #667eea;
-            font-size: 1.2em;
-            display: none;
-            margin: 20px 0;
         }
         
-        .result {
-            display: none;
-            animation: fadeIn 0.5s;
+        .search-section {
+            padding: 30px;
+        }
+        
+        .movie-poster {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+        
+        .score-badge {
+            font-size: 2rem;
+            font-weight: bold;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        
+        .tomatometer-badge {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+        }
+        
+        .audience-badge {
+            background: linear-gradient(135deg, #f7c600 0%, #e89c00 100%);
+            color: white;
+        }
+        
+        .info-badge {
+            background: #f8f9fa;
+            padding: 8px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            margin: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .cast-item {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin: 5px 0;
         }
         
         @keyframes fadeIn {
@@ -104,154 +81,145 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
-        .movie-card {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            padding: 30px;
-            border-radius: 15px;
-            margin-bottom: 20px;
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
         }
         
-        .movie-title {
-            font-size: 1.8em;
-            color: #333;
-            margin-bottom: 5px;
-        }
-        
-        .movie-year {
-            color: #666;
-            margin-bottom: 20px;
-        }
-        
-        .scores {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-        
-        .score-box {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-        }
-        
-        .score-label {
-            color: #666;
-            font-size: 0.9em;
-            margin-bottom: 10px;
-        }
-        
-        .score-value {
-            font-size: 2.5em;
-            font-weight: bold;
-            color: #667eea;
-        }
-        
-        .tomato {
-            color: #fa320a;
-        }
-        
-        .popcorn {
-            color: #f7c600;
-        }
-        
-        .movie-link {
-            display: inline-block;
-            margin-top: 15px;
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 500;
-        }
-        
-        .movie-link:hover {
-            text-decoration: underline;
-        }
-        
-        .error {
-            display: none;
-            background: #fee;
-            color: #c33;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-        }
-        
-        .examples {
-            margin-top: 20px;
-            text-align: center;
-            color: #666;
-            font-size: 0.9em;
-        }
-        
-        .example-chip {
-            display: inline-block;
-            background: #e8eaf6;
-            padding: 5px 12px;
-            margin: 5px;
-            border-radius: 15px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .example-chip:hover {
-            background: #667eea;
+        .genre-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            display: inline-block;
+            margin: 3px;
+            font-size: 0.85rem;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🍅 Rotten Tomatoes API</h1>
-        <p class="subtitle">Search for any movie and get its ratings</p>
-        
-        <div class="search-box">
-            <input 
-                type="text" 
-                id="movieInput" 
-                placeholder="Enter movie name (e.g., Inception)"
-                onkeypress="if(event.key==='Enter') searchMovie()"
-            >
-            <button onclick="searchMovie()" id="searchBtn">Search</button>
-        </div>
-        
-        <div class="loading" id="loading">
-            🔍 Searching...
-        </div>
-        
-        <div class="error" id="error"></div>
-        
-        <div class="result" id="result">
-            <div class="movie-card">
-                <h2 class="movie-title" id="movieTitle"></h2>
-                <p class="movie-year" id="movieYear"></p>
-                
-                <div class="scores">
-                    <div class="score-box">
-                        <div class="score-label">🍅 Tomatometer</div>
-                        <div class="score-value tomato" id="tomatometer"></div>
-                    </div>
-                    <div class="score-box">
-                        <div class="score-label">🍿 Audience Score</div>
-                        <div class="score-value popcorn" id="audienceScore"></div>
-                    </div>
+        <div class="main-card">
+            <!-- Header -->
+            <div class="header-section">
+                <h1 class="display-4 mb-2">
+                    <i class="bi bi-camera-reels"></i> Rotten Tomatoes Search
+                </h1>
+                <p class="lead mb-0">Discover movie ratings, cast, and more!</p>
+            </div>
+            
+            <!-- Search Section -->
+            <div class="search-section">
+                <div class="input-group input-group-lg mb-3">
+                    <input 
+                        type="text" 
+                        class="form-control" 
+                        id="movieInput" 
+                        placeholder="Enter movie name..."
+                        onkeypress="if(event.key==='Enter') searchMovie()"
+                    >
+                    <button 
+                        class="btn btn-primary" 
+                        type="button" 
+                        id="searchBtn"
+                        onclick="searchMovie()"
+                    >
+                        <i class="bi bi-search"></i> Search
+                    </button>
                 </div>
                 
-                <a href="#" target="_blank" id="movieLink" class="movie-link">
-                    View on Rotten Tomatoes →
-                </a>
+                <!-- Example Chips -->
+                <div class="text-center mb-4">
+                    <small class="text-muted">Try these:</small><br>
+                    <span class="badge bg-secondary m-1 cursor-pointer" style="cursor: pointer;" onclick="searchExample('Inception')">Inception</span>
+                    <span class="badge bg-secondary m-1 cursor-pointer" style="cursor: pointer;" onclick="searchExample('The Godfather')">The Godfather</span>
+                    <span class="badge bg-secondary m-1 cursor-pointer" style="cursor: pointer;" onclick="searchExample('Interstellar')">Interstellar</span>
+                    <span class="badge bg-secondary m-1 cursor-pointer" style="cursor: pointer;" onclick="searchExample('Barbie')">Barbie</span>
+                </div>
+                
+                <!-- Loading -->
+                <div class="text-center d-none" id="loading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Searching...</p>
+                </div>
+                
+                <!-- Error Alert -->
+                <div class="alert alert-danger d-none" id="errorAlert" role="alert">
+                    <i class="bi bi-exclamation-triangle"></i> <span id="errorMessage"></span>
+                </div>
+                
+                <!-- Results -->
+                <div id="results" class="d-none fade-in">
+                    <div class="row">
+                        <!-- Left Column - Poster -->
+                        <div class="col-md-4 mb-4">
+                            <img id="moviePoster" src="" alt="Movie Poster" class="movie-poster">
+                        </div>
+                        
+                        <!-- Right Column - Details -->
+                        <div class="col-md-8">
+                            <h2 id="movieTitle" class="mb-2"></h2>
+                            <div class="mb-3">
+                                <span class="info-badge" id="movieYear"></span>
+                                <span class="info-badge" id="movieRating"></span>
+                                <span class="info-badge" id="movieRuntime"></span>
+                            </div>
+                            
+                            <!-- Genres -->
+                            <div class="mb-3" id="genresContainer"></div>
+                            
+                            <!-- Description -->
+                            <p class="text-muted" id="movieDescription"></p>
+                            
+                            <!-- Director -->
+                            <p class="mb-2">
+                                <strong><i class="bi bi-person-video3"></i> Director:</strong> 
+                                <span id="movieDirector"></span>
+                            </p>
+                            
+                            <!-- Scores -->
+                            <div class="row mt-4 mb-4">
+                                <div class="col-md-6 mb-3">
+                                    <div class="score-badge tomatometer-badge">
+                                        <div class="small">🍅 Tomatometer</div>
+                                        <div id="tomatometer">N/A</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="score-badge audience-badge">
+                                        <div class="small">🍿 Audience Score</div>
+                                        <div id="audienceScore">N/A</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Cast -->
+                            <div class="mb-3">
+                                <h5><i class="bi bi-people"></i> Cast</h5>
+                                <div id="castContainer"></div>
+                            </div>
+                            
+                            <!-- Link -->
+                            <a href="#" target="_blank" id="movieLink" class="btn btn-outline-primary">
+                                <i class="bi bi-box-arrow-up-right"></i> View on Rotten Tomatoes
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         
-        <div class="examples">
-            <p>Try these examples:</p>
-            <span class="example-chip" onclick="searchExample('Inception')">Inception</span>
-            <span class="example-chip" onclick="searchExample('The Shawshank Redemption')">Shawshank Redemption</span>
-            <span class="example-chip" onclick="searchExample('Interstellar')">Interstellar</span>
+        <!-- Footer -->
+        <div class="text-center mt-4 text-white">
+            <small>Powered by Rotten Tomatoes API | Made with ❤️</small>
         </div>
     </div>
     
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
     <script>
-        // Replace with your actual API URL after deployment
         const API_URL = '/api/rating';
         
         async function searchMovie() {
@@ -273,7 +241,7 @@
                 hideLoading();
                 
                 if (data.success && data.data) {
-                    showResult(data.data);
+                    displayResults(data.data);
                 } else {
                     showError(data.error || 'Movie not found');
                 }
@@ -284,41 +252,110 @@
             }
         }
         
+        function displayResults(data) {
+            // Title and Year
+            document.getElementById('movieTitle').textContent = data.title || 'Unknown Title';
+            document.getElementById('movieYear').textContent = data.year || 'Year Unknown';
+            
+            // MPAA Rating
+            const ratingEl = document.getElementById('movieRating');
+            if (data.rating) {
+                ratingEl.textContent = data.rating;
+                ratingEl.classList.remove('d-none');
+            } else {
+                ratingEl.classList.add('d-none');
+            }
+            
+            // Runtime
+            const runtimeEl = document.getElementById('movieRuntime');
+            if (data.runtime) {
+                runtimeEl.textContent = data.runtime;
+                runtimeEl.classList.remove('d-none');
+            } else {
+                runtimeEl.classList.add('d-none');
+            }
+            
+            // Genres
+            const genresContainer = document.getElementById('genresContainer');
+            if (data.genres && data.genres.length > 0) {
+                genresContainer.innerHTML = data.genres.map(genre => 
+                    `<span class="genre-badge">${genre}</span>`
+                ).join('');
+            } else {
+                genresContainer.innerHTML = '';
+            }
+            
+            // Description
+            document.getElementById('movieDescription').textContent = 
+                data.description || 'No description available.';
+            
+            // Director
+            document.getElementById('movieDirector').textContent = 
+                data.director || 'Unknown';
+            
+            // Poster Image
+            const posterEl = document.getElementById('moviePoster');
+            if (data.image_url) {
+                posterEl.src = data.image_url;
+                posterEl.alt = data.title || 'Movie Poster';
+                posterEl.classList.remove('d-none');
+            } else {
+                posterEl.src = 'https://via.placeholder.com/300x450?text=No+Image';
+                posterEl.alt = 'No poster available';
+            }
+            
+            // Scores
+            document.getElementById('tomatometer').textContent = 
+                data.tomatometer || 'N/A';
+            document.getElementById('audienceScore').textContent = 
+                data.audience_score || 'N/A';
+            
+            // Cast
+            const castContainer = document.getElementById('castContainer');
+            if (data.cast && data.cast.length > 0) {
+                // Show first 6 cast members
+                castContainer.innerHTML = data.cast.slice(0, 6).map(actor => 
+                    `<div class="cast-item">
+                        <i class="bi bi-person-circle"></i> ${actor}
+                    </div>`
+                ).join('');
+            } else {
+                castContainer.innerHTML = '<p class="text-muted">Cast information not available</p>';
+            }
+            
+            // Link
+            document.getElementById('movieLink').href = data.url || '#';
+            
+            // Show results
+            document.getElementById('results').classList.remove('d-none');
+        }
+        
         function searchExample(movieName) {
             document.getElementById('movieInput').value = movieName;
             searchMovie();
         }
         
-        function showResult(data) {
-            document.getElementById('movieTitle').textContent = data.title || 'Unknown';
-            document.getElementById('movieYear').textContent = data.year || '';
-            document.getElementById('tomatometer').textContent = data.tomatometer || 'N/A';
-            document.getElementById('audienceScore').textContent = data.audience_score || 'N/A';
-            document.getElementById('movieLink').href = data.url || '#';
-            document.getElementById('result').style.display = 'block';
-        }
-        
         function showError(message) {
-            const errorDiv = document.getElementById('error');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
+            const errorAlert = document.getElementById('errorAlert');
+            document.getElementById('errorMessage').textContent = message;
+            errorAlert.classList.remove('d-none');
         }
         
         function showLoading() {
-            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').classList.remove('d-none');
             document.getElementById('searchBtn').disabled = true;
         }
         
         function hideLoading() {
-            document.getElementById('loading').style.display = 'none';
+            document.getElementById('loading').classList.add('d-none');
             document.getElementById('searchBtn').disabled = false;
         }
         
         function hideAll() {
-            document.getElementById('result').style.display = 'none';
-            document.getElementById('error').style.display = 'none';
-            document.getElementById('loading').style.display = 'none';
+            document.getElementById('results').classList.add('d-none');
+            document.getElementById('errorAlert').classList.add('d-none');
+            document.getElementById('loading').classList.add('d-none');
         }
     </script>
 </body>
-  </html>
+                                </html>
