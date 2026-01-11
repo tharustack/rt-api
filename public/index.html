@@ -142,9 +142,7 @@
                                 <h3 class="text-2xl font-bold text-gray-900 mb-3 flex items-center">
                                     ▶️ Trailer
                                 </h3>
-                                <div class="relative pb-[56.25%] h-0 overflow-hidden rounded-xl shadow-lg">
-                                    <div id="trailerContainer" class="absolute top-0 left-0 w-full h-full"></div>
-                                </div>
+                                <div id="trailerContainer"></div>
                             </div>
                             
                             <!-- Movie Info -->
@@ -276,7 +274,13 @@
             }
         }
         
+        function isYouTubeUrl(url) {
+            return url && (url.includes('youtube.com') || url.includes('youtu.be'));
+        }
+        
         function displayResults(data) {
+            console.log('Movie data:', data);
+            
             // Title and basic info
             document.getElementById('movieTitle').textContent = data.title || 'Unknown';
             
@@ -289,7 +293,6 @@
             ratingEl.textContent = data.rating || 'N/A';
             runtimeEl.textContent = data.runtime || 'N/A';
             
-            // Hide if no data
             yearEl.classList.toggle('hidden', !data.year);
             ratingEl.classList.toggle('hidden', !data.rating);
             runtimeEl.classList.toggle('hidden', !data.runtime);
@@ -316,22 +319,43 @@
             document.getElementById('tomatometer').textContent = data.tomatometer || 'N/A';
             document.getElementById('audienceScore').textContent = data.audience_score || 'N/A';
             
-            // Trailer
+            // Trailer - Handle YouTube embeds and regular links
             if (data.trailer_url) {
+                console.log('Trailer URL:', data.trailer_url);
                 const trailerContainer = document.getElementById('trailerContainer');
-                let embedUrl = data.trailer_url;
                 
-                if (embedUrl.includes('youtube.com/watch')) {
-                    const videoId = new URL(embedUrl).searchParams.get('v');
-                    embedUrl = `https://www.youtube.com/embed/${videoId}`;
-                } else if (embedUrl.includes('youtu.be/')) {
-                    const videoId = embedUrl.split('youtu.be/')[1].split('?')[0];
-                    embedUrl = `https://www.youtube.com/embed/${videoId}`;
+                if (isYouTubeUrl(data.trailer_url)) {
+                    // YouTube video - embed it
+                    let embedUrl = data.trailer_url;
+                    
+                    if (embedUrl.includes('youtube.com/watch')) {
+                        const videoId = new URL(embedUrl).searchParams.get('v');
+                        embedUrl = `https://www.youtube.com/embed/${videoId}`;
+                    } else if (embedUrl.includes('youtu.be/')) {
+                        const videoId = embedUrl.split('youtu.be/')[1].split('?')[0];
+                        embedUrl = `https://www.youtube.com/embed/${videoId}`;
+                    }
+                    
+                    trailerContainer.innerHTML = `
+                        <div class="relative pb-[56.25%] h-0 overflow-hidden rounded-xl shadow-lg">
+                            <iframe src="${embedUrl}" class="absolute top-0 left-0 w-full h-full" allowfullscreen frameborder="0"></iframe>
+                        </div>
+                    `;
+                } else {
+                    // Non-YouTube link - show as a button
+                    trailerContainer.innerHTML = `
+                        <a href="${data.trailer_url}" target="_blank" class="inline-flex items-center px-6 py-4 gradient-bg text-white font-semibold rounded-xl hover:opacity-90 transition shadow-lg">
+                            <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/>
+                            </svg>
+                            Watch Trailer
+                        </a>
+                    `;
                 }
                 
-                trailerContainer.innerHTML = `<iframe src="${embedUrl}" class="w-full h-full" allowfullscreen frameborder="0"></iframe>`;
                 document.getElementById('trailerSection').classList.remove('hidden');
             } else {
+                console.log('No trailer URL found');
                 document.getElementById('trailerSection').classList.add('hidden');
             }
             
@@ -364,14 +388,16 @@
             
             // Photos
             if (data.photos && data.photos.length > 0) {
+                console.log(`Found ${data.photos.length} photos`);
                 const photoGallery = document.getElementById('photoGallery');
                 photoGallery.innerHTML = data.photos.map(photo => 
                     `<div class="aspect-video overflow-hidden rounded-lg cursor-pointer hover:scale-105 transition-transform shadow-md" onclick="window.open('${photo}', '_blank')">
-                        <img src="${photo}" alt="Movie Photo" class="w-full h-full object-cover">
+                        <img src="${photo}" alt="Movie Photo" class="w-full h-full object-cover" loading="lazy">
                     </div>`
                 ).join('');
                 document.getElementById('photosSection').classList.remove('hidden');
             } else {
+                console.log('No photos found');
                 document.getElementById('photosSection').classList.add('hidden');
             }
             
@@ -422,4 +448,4 @@
         }
     </script>
 </body>
-    </html>
+                                    </html>
