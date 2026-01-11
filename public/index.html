@@ -4,137 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rotten Tomatoes Movie Database</title>
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 40px 0;
-        }
-        
-        .main-card {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
-        
-        .header-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-        
-        .search-section {
-            padding: 30px;
-        }
-        
-        .movie-poster {
-            width: 100%;
-            height: 450px;
-            object-fit: cover;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-        
-        .score-badge {
-            font-size: 2rem;
-            font-weight: bold;
-            padding: 20px;
-            border-radius: 15px;
-            text-align: center;
-        }
-        
-        .tomatometer-badge {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-            color: white;
-        }
-        
-        .audience-badge {
-            background: linear-gradient(135deg, #f7c600 0%, #e89c00 100%);
-            color: white;
-        }
-        
-        .info-badge {
-            background: #f8f9fa;
-            padding: 8px 15px;
-            border-radius: 20px;
-            display: inline-block;
-            margin: 5px;
-            font-size: 0.9rem;
-        }
-        
-        .genre-badge {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 5px 12px;
-            border-radius: 15px;
-            display: inline-block;
-            margin: 3px;
-            font-size: 0.85rem;
-        }
-        
-        .cast-item {
-            background: #f8f9fa;
-            padding: 10px 15px;
-            border-radius: 10px;
-            margin: 5px 0;
-        }
-        
-        .info-table {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-        }
-        
-        .info-row {
-            padding: 10px 0;
-            border-bottom: 1px solid #dee2e6;
-        }
-        
-        .info-row:last-child {
-            border-bottom: none;
-        }
-        
-        .info-label {
-            font-weight: 600;
-            color: #495057;
-        }
-        
-        .photo-gallery img {
-            width: 100%;
-            height: 150px;
-            object-fit: cover;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: transform 0.3s;
-        }
-        
-        .photo-gallery img:hover {
-            transform: scale(1.05);
-        }
-        
-        .trailer-container {
-            position: relative;
-            padding-bottom: 56.25%;
-            height: 0;
-            overflow: hidden;
-            border-radius: 10px;
-        }
-        
-        .trailer-container iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: 0;
-        }
-        
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
@@ -144,167 +15,220 @@
             animation: fadeIn 0.5s ease-in;
         }
         
-        .section-title {
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin: 30px 0 15px 0;
-            color: #333;
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .score-gradient-red {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+        }
+        
+        .score-gradient-yellow {
+            background: linear-gradient(135deg, #f7c600 0%, #e89c00 100%);
+        }
+        
+        .genre-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <div class="main-card">
-            <div class="header-section">
-                <h1 class="display-4 mb-2">
-                    <i class="bi bi-camera-reels"></i> Movie Database
+<body class="gradient-bg min-h-screen py-8 px-4">
+    <div class="max-w-7xl mx-auto">
+        <!-- Main Card -->
+        <div class="bg-white rounded-3xl shadow-2xl overflow-hidden">
+            <!-- Header -->
+            <div class="gradient-bg text-white py-8 px-6 text-center">
+                <h1 class="text-5xl font-bold mb-2">
+                    🎬 Movie Database
                 </h1>
-                <p class="lead mb-0">Complete Movie Information & Ratings</p>
+                <p class="text-xl opacity-90">Complete Movie Information & Ratings</p>
             </div>
             
-            <div class="search-section">
-                <div class="input-group input-group-lg mb-3">
+            <!-- Search Section -->
+            <div class="p-8">
+                <!-- Search Input -->
+                <div class="flex gap-2 mb-4">
                     <input 
                         type="text" 
-                        class="form-control" 
                         id="movieInput" 
                         placeholder="Search any movie..."
+                        class="flex-1 px-6 py-4 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:border-purple-500 transition"
                         onkeypress="if(event.key==='Enter') searchMovie()"
                     >
-                    <button class="btn btn-primary" type="button" id="searchBtn" onclick="searchMovie()">
-                        <i class="bi bi-search"></i> Search
+                    <button 
+                        id="searchBtn"
+                        onclick="searchMovie()"
+                        class="px-8 py-4 gradient-bg text-white font-semibold rounded-xl hover:opacity-90 transition disabled:opacity-50"
+                    >
+                        🔍 Search
                     </button>
                 </div>
                 
-                <div class="text-center mb-4">
-                    <small class="text-muted">Try:</small><br>
-                    <span class="badge bg-secondary m-1" style="cursor: pointer;" onclick="searchExample('Inception')">Inception</span>
-                    <span class="badge bg-secondary m-1" style="cursor: pointer;" onclick="searchExample('The Godfather')">The Godfather</span>
-                    <span class="badge bg-secondary m-1" style="cursor: pointer;" onclick="searchExample('Oppenheimer')">Oppenheimer</span>
-                    <span class="badge bg-secondary m-1" style="cursor: pointer;" onclick="searchExample('Barbie')">Barbie</span>
+                <!-- Example Movies -->
+                <div class="text-center mb-6">
+                    <span class="text-gray-500 text-sm">Try:</span>
+                    <div class="flex flex-wrap justify-center gap-2 mt-2">
+                        <button onclick="searchExample('Inception')" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-full text-sm transition">Inception</button>
+                        <button onclick="searchExample('The Godfather')" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-full text-sm transition">The Godfather</button>
+                        <button onclick="searchExample('Oppenheimer')" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-full text-sm transition">Oppenheimer</button>
+                        <button onclick="searchExample('Barbie')" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-full text-sm transition">Barbie</button>
+                        <button onclick="searchExample('Dune')" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-full text-sm transition">Dune</button>
+                    </div>
                 </div>
                 
-                <div class="text-center d-none" id="loading">
-                    <div class="spinner-border text-primary" role="status"></div>
-                    <p class="mt-2 text-muted">Searching...</p>
+                <!-- Loading State -->
+                <div id="loading" class="hidden text-center py-8">
+                    <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
+                    <p class="mt-4 text-gray-600">Searching...</p>
                 </div>
                 
-                <div class="alert alert-danger d-none" id="errorAlert" role="alert">
-                    <i class="bi bi-exclamation-triangle"></i> <span id="errorMessage"></span>
+                <!-- Error Alert -->
+                <div id="errorAlert" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-4">
+                    <div class="flex items-center">
+                        <span class="text-2xl mr-2">⚠️</span>
+                        <span id="errorMessage"></span>
+                    </div>
                 </div>
                 
-                <div id="results" class="d-none fade-in">
-                    <div class="row">
-                        <div class="col-lg-4 mb-4">
-                            <img id="moviePoster" src="" alt="Poster" class="movie-poster">
+                <!-- Results -->
+                <div id="results" class="hidden fade-in">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <!-- Left Column - Poster & Scores -->
+                        <div class="lg:col-span-1">
+                            <img 
+                                id="moviePoster" 
+                                src="" 
+                                alt="Poster" 
+                                class="w-full rounded-2xl shadow-xl mb-6 aspect-[2/3] object-cover"
+                            >
                             
-                            <div class="row mt-4 g-2">
-                                <div class="col-6">
-                                    <div class="score-badge tomatometer-badge">
-                                        <div class="small">🍅 Critics</div>
-                                        <div id="tomatometer">N/A</div>
-                                    </div>
+                            <!-- Scores -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="score-gradient-red text-white p-6 rounded-2xl text-center shadow-lg">
+                                    <div class="text-sm opacity-90 mb-2">🍅 Critics</div>
+                                    <div id="tomatometer" class="text-4xl font-bold">N/A</div>
                                 </div>
-                                <div class="col-6">
-                                    <div class="score-badge audience-badge">
-                                        <div class="small">🍿 Audience</div>
-                                        <div id="audienceScore">N/A</div>
-                                    </div>
+                                <div class="score-gradient-yellow text-white p-6 rounded-2xl text-center shadow-lg">
+                                    <div class="text-sm opacity-90 mb-2">🍿 Audience</div>
+                                    <div id="audienceScore" class="text-4xl font-bold">N/A</div>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="col-lg-8">
-                            <h2 id="movieTitle" class="mb-2"></h2>
-                            <div class="mb-3">
-                                <span class="info-badge" id="movieYear"></span>
-                                <span class="info-badge" id="movieRating"></span>
-                                <span class="info-badge" id="movieRuntime"></span>
+                        <!-- Right Column - Details -->
+                        <div class="lg:col-span-2">
+                            <!-- Title & Basic Info -->
+                            <h2 id="movieTitle" class="text-4xl font-bold text-gray-900 mb-4"></h2>
+                            
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                <span id="movieYear" class="px-4 py-2 bg-gray-100 rounded-full text-sm font-medium"></span>
+                                <span id="movieRating" class="px-4 py-2 bg-gray-100 rounded-full text-sm font-medium"></span>
+                                <span id="movieRuntime" class="px-4 py-2 bg-gray-100 rounded-full text-sm font-medium"></span>
                             </div>
                             
-                            <div class="mb-3" id="genresContainer"></div>
+                            <!-- Genres -->
+                            <div id="genresContainer" class="flex flex-wrap gap-2 mb-6"></div>
                             
-                            <div class="section-title">
-                                <i class="bi bi-chat-square-quote"></i> Synopsis
-                            </div>
-                            <p class="text-muted" id="movieSynopsis"></p>
-                            
-                            <div id="trailerSection" class="d-none mb-4">
-                                <div class="section-title">
-                                    <i class="bi bi-play-circle"></i> Trailer
-                                </div>
-                                <div class="trailer-container" id="trailerContainer"></div>
+                            <!-- Synopsis -->
+                            <div class="mb-6">
+                                <h3 class="text-2xl font-bold text-gray-900 mb-3 flex items-center">
+                                    💬 Synopsis
+                                </h3>
+                                <p id="movieSynopsis" class="text-gray-700 leading-relaxed"></p>
                             </div>
                             
-                            <div class="section-title">
-                                <i class="bi bi-info-circle"></i> Movie Info
-                            </div>
-                            <div class="info-table">
-                                <div class="info-row" id="directorRow">
-                                    <span class="info-label">Director:</span>
-                                    <span id="movieDirector"></span>
-                                </div>
-                                <div class="info-row" id="producerRow">
-                                    <span class="info-label">Producer:</span>
-                                    <span id="movieProducer"></span>
-                                </div>
-                                <div class="info-row" id="screenwriterRow">
-                                    <span class="info-label">Screenwriter:</span>
-                                    <span id="movieScreenwriter"></span>
-                                </div>
-                                <div class="info-row" id="distributorRow">
-                                    <span class="info-label">Distributor:</span>
-                                    <span id="movieDistributor"></span>
-                                </div>
-                                <div class="info-row" id="productionRow">
-                                    <span class="info-label">Production Co:</span>
-                                    <span id="movieProduction"></span>
-                                </div>
-                                <div class="info-row" id="languageRow">
-                                    <span class="info-label">Original Language:</span>
-                                    <span id="movieLanguage"></span>
-                                </div>
-                                <div class="info-row" id="releaseTheatersRow">
-                                    <span class="info-label">Release Date (Theaters):</span>
-                                    <span id="movieReleaseTheaters"></span>
-                                </div>
-                                <div class="info-row" id="rereleaseRow">
-                                    <span class="info-label">Rerelease Date:</span>
-                                    <span id="movieRerelease"></span>
-                                </div>
-                                <div class="info-row" id="releaseStreamingRow">
-                                    <span class="info-label">Release Date (Streaming):</span>
-                                    <span id="movieReleaseStreaming"></span>
-                                </div>
-                                <div class="info-row" id="boxOfficeRow">
-                                    <span class="info-label">Box Office (USA):</span>
-                                    <span id="movieBoxOffice"></span>
-                                </div>
-                                <div class="info-row" id="soundMixRow">
-                                    <span class="info-label">Sound Mix:</span>
-                                    <span id="movieSoundMix"></span>
-                                </div>
-                                <div class="info-row" id="aspectRatioRow">
-                                    <span class="info-label">Aspect Ratio:</span>
-                                    <span id="movieAspectRatio"></span>
+                            <!-- Trailer -->
+                            <div id="trailerSection" class="hidden mb-6">
+                                <h3 class="text-2xl font-bold text-gray-900 mb-3 flex items-center">
+                                    ▶️ Trailer
+                                </h3>
+                                <div class="relative pb-[56.25%] h-0 overflow-hidden rounded-xl shadow-lg">
+                                    <div id="trailerContainer" class="absolute top-0 left-0 w-full h-full"></div>
                                 </div>
                             </div>
                             
-                            <div class="section-title">
-                                <i class="bi bi-people"></i> Cast
-                            </div>
-                            <div id="castContainer"></div>
-                            
-                            <div id="photosSection" class="d-none">
-                                <div class="section-title">
-                                    <i class="bi bi-images"></i> Photos
+                            <!-- Movie Info -->
+                            <div class="mb-6">
+                                <h3 class="text-2xl font-bold text-gray-900 mb-3 flex items-center">
+                                    ℹ️ Movie Info
+                                </h3>
+                                <div class="bg-gray-50 rounded-xl p-6 space-y-3">
+                                    <div id="directorRow" class="hidden border-b border-gray-200 pb-3">
+                                        <span class="font-semibold text-gray-700">Director:</span>
+                                        <span id="movieDirector" class="text-gray-600 ml-2"></span>
+                                    </div>
+                                    <div id="producerRow" class="hidden border-b border-gray-200 pb-3">
+                                        <span class="font-semibold text-gray-700">Producer:</span>
+                                        <span id="movieProducer" class="text-gray-600 ml-2"></span>
+                                    </div>
+                                    <div id="screenwriterRow" class="hidden border-b border-gray-200 pb-3">
+                                        <span class="font-semibold text-gray-700">Screenwriter:</span>
+                                        <span id="movieScreenwriter" class="text-gray-600 ml-2"></span>
+                                    </div>
+                                    <div id="distributorRow" class="hidden border-b border-gray-200 pb-3">
+                                        <span class="font-semibold text-gray-700">Distributor:</span>
+                                        <span id="movieDistributor" class="text-gray-600 ml-2"></span>
+                                    </div>
+                                    <div id="productionRow" class="hidden border-b border-gray-200 pb-3">
+                                        <span class="font-semibold text-gray-700">Production Co:</span>
+                                        <span id="movieProduction" class="text-gray-600 ml-2"></span>
+                                    </div>
+                                    <div id="languageRow" class="hidden border-b border-gray-200 pb-3">
+                                        <span class="font-semibold text-gray-700">Original Language:</span>
+                                        <span id="movieLanguage" class="text-gray-600 ml-2"></span>
+                                    </div>
+                                    <div id="releaseTheatersRow" class="hidden border-b border-gray-200 pb-3">
+                                        <span class="font-semibold text-gray-700">Release Date (Theaters):</span>
+                                        <span id="movieReleaseTheaters" class="text-gray-600 ml-2"></span>
+                                    </div>
+                                    <div id="rereleaseRow" class="hidden border-b border-gray-200 pb-3">
+                                        <span class="font-semibold text-gray-700">Rerelease Date:</span>
+                                        <span id="movieRerelease" class="text-gray-600 ml-2"></span>
+                                    </div>
+                                    <div id="releaseStreamingRow" class="hidden border-b border-gray-200 pb-3">
+                                        <span class="font-semibold text-gray-700">Release Date (Streaming):</span>
+                                        <span id="movieReleaseStreaming" class="text-gray-600 ml-2"></span>
+                                    </div>
+                                    <div id="boxOfficeRow" class="hidden border-b border-gray-200 pb-3">
+                                        <span class="font-semibold text-gray-700">Box Office (USA):</span>
+                                        <span id="movieBoxOffice" class="text-gray-600 ml-2"></span>
+                                    </div>
+                                    <div id="soundMixRow" class="hidden border-b border-gray-200 pb-3">
+                                        <span class="font-semibold text-gray-700">Sound Mix:</span>
+                                        <span id="movieSoundMix" class="text-gray-600 ml-2"></span>
+                                    </div>
+                                    <div id="aspectRatioRow" class="hidden">
+                                        <span class="font-semibold text-gray-700">Aspect Ratio:</span>
+                                        <span id="movieAspectRatio" class="text-gray-600 ml-2"></span>
+                                    </div>
                                 </div>
-                                <div class="row photo-gallery" id="photoGallery"></div>
                             </div>
                             
-                            <div class="mt-4">
-                                <a href="#" target="_blank" id="movieLink" class="btn btn-outline-primary">
-                                    <i class="bi bi-box-arrow-up-right"></i> View on Rotten Tomatoes
+                            <!-- Cast -->
+                            <div class="mb-6">
+                                <h3 class="text-2xl font-bold text-gray-900 mb-3 flex items-center">
+                                    👥 Cast
+                                </h3>
+                                <div id="castContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+                            </div>
+                            
+                            <!-- Photos -->
+                            <div id="photosSection" class="hidden mb-6">
+                                <h3 class="text-2xl font-bold text-gray-900 mb-3 flex items-center">
+                                    🖼️ Photos
+                                </h3>
+                                <div id="photoGallery" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+                            </div>
+                            
+                            <!-- Link to RT -->
+                            <div class="mt-6">
+                                <a 
+                                    href="#" 
+                                    target="_blank" 
+                                    id="movieLink" 
+                                    class="inline-block px-6 py-3 border-2 border-purple-500 text-purple-500 font-semibold rounded-xl hover:bg-purple-500 hover:text-white transition"
+                                >
+                                    🔗 View on Rotten Tomatoes
                                 </a>
                             </div>
                         </div>
@@ -313,12 +237,11 @@
             </div>
         </div>
         
-        <div class="text-center mt-4 text-white">
-            <small>Powered by Rotten Tomatoes | Made with ❤️</small>
+        <!-- Footer -->
+        <div class="text-center mt-6 text-white">
+            <p class="text-sm opacity-90">Powered by Rotten Tomatoes | Made with ❤️</p>
         </div>
     </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
         const API_URL = '/api/rating';
@@ -354,16 +277,29 @@
         }
         
         function displayResults(data) {
+            // Title and basic info
             document.getElementById('movieTitle').textContent = data.title || 'Unknown';
-            document.getElementById('movieYear').textContent = data.year || 'N/A';
             
-            setInfoField('movieRating', data.rating, 'ratingRow');
-            setInfoField('movieRuntime', data.runtime, 'runtimeRow');
+            // Year, Rating, Runtime
+            const yearEl = document.getElementById('movieYear');
+            const ratingEl = document.getElementById('movieRating');
+            const runtimeEl = document.getElementById('movieRuntime');
+            
+            yearEl.textContent = data.year || 'N/A';
+            ratingEl.textContent = data.rating || 'N/A';
+            runtimeEl.textContent = data.runtime || 'N/A';
+            
+            // Hide if no data
+            yearEl.classList.toggle('hidden', !data.year);
+            ratingEl.classList.toggle('hidden', !data.rating);
+            runtimeEl.classList.toggle('hidden', !data.runtime);
             
             // Genres
             const genresContainer = document.getElementById('genresContainer');
             if (data.genres && data.genres.length > 0) {
-                genresContainer.innerHTML = data.genres.map(g => `<span class="genre-badge">${g}</span>`).join('');
+                genresContainer.innerHTML = data.genres.map(g => 
+                    `<span class="genre-gradient text-white px-4 py-2 rounded-full text-sm font-medium">${g}</span>`
+                ).join('');
             } else {
                 genresContainer.innerHTML = '';
             }
@@ -389,14 +325,14 @@
                     const videoId = new URL(embedUrl).searchParams.get('v');
                     embedUrl = `https://www.youtube.com/embed/${videoId}`;
                 } else if (embedUrl.includes('youtu.be/')) {
-                    const videoId = embedUrl.split('youtu.be/')[1];
+                    const videoId = embedUrl.split('youtu.be/')[1].split('?')[0];
                     embedUrl = `https://www.youtube.com/embed/${videoId}`;
                 }
                 
-                trailerContainer.innerHTML = `<iframe src="${embedUrl}" allowfullscreen></iframe>`;
-                document.getElementById('trailerSection').classList.remove('d-none');
+                trailerContainer.innerHTML = `<iframe src="${embedUrl}" class="w-full h-full" allowfullscreen frameborder="0"></iframe>`;
+                document.getElementById('trailerSection').classList.remove('hidden');
             } else {
-                document.getElementById('trailerSection').classList.add('d-none');
+                document.getElementById('trailerSection').classList.add('hidden');
             }
             
             // Movie Info
@@ -416,28 +352,34 @@
             // Cast
             const castContainer = document.getElementById('castContainer');
             if (data.cast && data.cast.length > 0) {
-                castContainer.innerHTML = data.cast.slice(0, 8).map(actor => 
-                    `<div class="cast-item"><i class="bi bi-person-circle"></i> ${actor}</div>`
+                castContainer.innerHTML = data.cast.slice(0, 10).map(actor => 
+                    `<div class="bg-gray-50 p-4 rounded-lg">
+                        <span class="text-2xl mr-2">👤</span>
+                        <span class="text-gray-700">${actor}</span>
+                    </div>`
                 ).join('');
             } else {
-                castContainer.innerHTML = '<p class="text-muted">Cast not available</p>';
+                castContainer.innerHTML = '<p class="text-gray-500">Cast not available</p>';
             }
             
             // Photos
             if (data.photos && data.photos.length > 0) {
                 const photoGallery = document.getElementById('photoGallery');
                 photoGallery.innerHTML = data.photos.map(photo => 
-                    `<div class="col-md-4 col-6 mb-3">
-                        <img src="${photo}" alt="Movie Photo" onclick="window.open('${photo}', '_blank')">
+                    `<div class="aspect-video overflow-hidden rounded-lg cursor-pointer hover:scale-105 transition-transform shadow-md" onclick="window.open('${photo}', '_blank')">
+                        <img src="${photo}" alt="Movie Photo" class="w-full h-full object-cover">
                     </div>`
                 ).join('');
-                document.getElementById('photosSection').classList.remove('d-none');
+                document.getElementById('photosSection').classList.remove('hidden');
             } else {
-                document.getElementById('photosSection').classList.add('d-none');
+                document.getElementById('photosSection').classList.add('hidden');
             }
             
+            // Link
             document.getElementById('movieLink').href = data.url || '#';
-            document.getElementById('results').classList.remove('d-none');
+            
+            // Show results
+            document.getElementById('results').classList.remove('hidden');
         }
         
         function setInfoField(elementId, value, rowId) {
@@ -446,10 +388,10 @@
             
             if (value) {
                 element.textContent = value;
-                if (row) row.classList.remove('d-none');
+                row.classList.remove('hidden');
             } else {
                 element.textContent = 'N/A';
-                if (row) row.classList.add('d-none');
+                row.classList.add('hidden');
             }
         }
         
@@ -460,23 +402,23 @@
         
         function showError(message) {
             document.getElementById('errorMessage').textContent = message;
-            document.getElementById('errorAlert').classList.remove('d-none');
+            document.getElementById('errorAlert').classList.remove('hidden');
         }
         
         function showLoading() {
-            document.getElementById('loading').classList.remove('d-none');
+            document.getElementById('loading').classList.remove('hidden');
             document.getElementById('searchBtn').disabled = true;
         }
         
         function hideLoading() {
-            document.getElementById('loading').classList.add('d-none');
+            document.getElementById('loading').classList.add('hidden');
             document.getElementById('searchBtn').disabled = false;
         }
         
         function hideAll() {
-            document.getElementById('results').classList.add('d-none');
-            document.getElementById('errorAlert').classList.add('d-none');
-            document.getElementById('loading').classList.add('d-none');
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('errorAlert').classList.add('hidden');
+            document.getElementById('loading').classList.add('hidden');
         }
     </script>
 </body>
