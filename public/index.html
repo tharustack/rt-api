@@ -3,11 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rotten Tomatoes Movie Search</title>
+    <title>Rotten Tomatoes Movie Database</title>
     
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     
     <style>
@@ -37,9 +35,10 @@
         
         .movie-poster {
             width: 100%;
-            height: 400px;
+            height: 450px;
             object-fit: cover;
             border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
         
         .score-badge {
@@ -69,11 +68,71 @@
             font-size: 0.9rem;
         }
         
+        .genre-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            display: inline-block;
+            margin: 3px;
+            font-size: 0.85rem;
+        }
+        
         .cast-item {
             background: #f8f9fa;
             padding: 10px 15px;
             border-radius: 10px;
             margin: 5px 0;
+        }
+        
+        .info-table {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        
+        .info-row {
+            padding: 10px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .photo-gallery img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        
+        .photo-gallery img:hover {
+            transform: scale(1.05);
+        }
+        
+        .trailer-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            border-radius: 10px;
+        }
+        
+        .trailer-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
         }
         
         @keyframes fadeIn {
@@ -85,80 +144,77 @@
             animation: fadeIn 0.5s ease-in;
         }
         
-        .genre-badge {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 5px 12px;
-            border-radius: 15px;
-            display: inline-block;
-            margin: 3px;
-            font-size: 0.85rem;
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 30px 0 15px 0;
+            color: #333;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="main-card">
-            <!-- Header -->
             <div class="header-section">
                 <h1 class="display-4 mb-2">
-                    <i class="bi bi-camera-reels"></i> Rotten Tomatoes Search
+                    <i class="bi bi-camera-reels"></i> Movie Database
                 </h1>
-                <p class="lead mb-0">Discover movie ratings, cast, and more!</p>
+                <p class="lead mb-0">Complete Movie Information & Ratings</p>
             </div>
             
-            <!-- Search Section -->
             <div class="search-section">
                 <div class="input-group input-group-lg mb-3">
                     <input 
                         type="text" 
                         class="form-control" 
                         id="movieInput" 
-                        placeholder="Enter movie name..."
+                        placeholder="Search any movie..."
                         onkeypress="if(event.key==='Enter') searchMovie()"
                     >
-                    <button 
-                        class="btn btn-primary" 
-                        type="button" 
-                        id="searchBtn"
-                        onclick="searchMovie()"
-                    >
+                    <button class="btn btn-primary" type="button" id="searchBtn" onclick="searchMovie()">
                         <i class="bi bi-search"></i> Search
                     </button>
                 </div>
                 
-                <!-- Example Chips -->
                 <div class="text-center mb-4">
-                    <small class="text-muted">Try these:</small><br>
-                    <span class="badge bg-secondary m-1 cursor-pointer" style="cursor: pointer;" onclick="searchExample('Inception')">Inception</span>
-                    <span class="badge bg-secondary m-1 cursor-pointer" style="cursor: pointer;" onclick="searchExample('The Godfather')">The Godfather</span>
-                    <span class="badge bg-secondary m-1 cursor-pointer" style="cursor: pointer;" onclick="searchExample('Interstellar')">Interstellar</span>
-                    <span class="badge bg-secondary m-1 cursor-pointer" style="cursor: pointer;" onclick="searchExample('Barbie')">Barbie</span>
+                    <small class="text-muted">Try:</small><br>
+                    <span class="badge bg-secondary m-1" style="cursor: pointer;" onclick="searchExample('Inception')">Inception</span>
+                    <span class="badge bg-secondary m-1" style="cursor: pointer;" onclick="searchExample('The Godfather')">The Godfather</span>
+                    <span class="badge bg-secondary m-1" style="cursor: pointer;" onclick="searchExample('Oppenheimer')">Oppenheimer</span>
+                    <span class="badge bg-secondary m-1" style="cursor: pointer;" onclick="searchExample('Barbie')">Barbie</span>
                 </div>
                 
-                <!-- Loading -->
                 <div class="text-center d-none" id="loading">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
+                    <div class="spinner-border text-primary" role="status"></div>
                     <p class="mt-2 text-muted">Searching...</p>
                 </div>
                 
-                <!-- Error Alert -->
                 <div class="alert alert-danger d-none" id="errorAlert" role="alert">
                     <i class="bi bi-exclamation-triangle"></i> <span id="errorMessage"></span>
                 </div>
                 
-                <!-- Results -->
                 <div id="results" class="d-none fade-in">
                     <div class="row">
-                        <!-- Left Column - Poster -->
-                        <div class="col-md-4 mb-4">
-                            <img id="moviePoster" src="" alt="Movie Poster" class="movie-poster">
+                        <div class="col-lg-4 mb-4">
+                            <img id="moviePoster" src="" alt="Poster" class="movie-poster">
+                            
+                            <div class="row mt-4 g-2">
+                                <div class="col-6">
+                                    <div class="score-badge tomatometer-badge">
+                                        <div class="small">🍅 Critics</div>
+                                        <div id="tomatometer">N/A</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="score-badge audience-badge">
+                                        <div class="small">🍿 Audience</div>
+                                        <div id="audienceScore">N/A</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
-                        <!-- Right Column - Details -->
-                        <div class="col-md-8">
+                        <div class="col-lg-8">
                             <h2 id="movieTitle" class="mb-2"></h2>
                             <div class="mb-3">
                                 <span class="info-badge" id="movieYear"></span>
@@ -166,57 +222,102 @@
                                 <span class="info-badge" id="movieRuntime"></span>
                             </div>
                             
-                            <!-- Genres -->
                             <div class="mb-3" id="genresContainer"></div>
                             
-                            <!-- Description -->
-                            <p class="text-muted" id="movieDescription"></p>
+                            <div class="section-title">
+                                <i class="bi bi-chat-square-quote"></i> Synopsis
+                            </div>
+                            <p class="text-muted" id="movieSynopsis"></p>
                             
-                            <!-- Director -->
-                            <p class="mb-2">
-                                <strong><i class="bi bi-person-video3"></i> Director:</strong> 
-                                <span id="movieDirector"></span>
-                            </p>
-                            
-                            <!-- Scores -->
-                            <div class="row mt-4 mb-4">
-                                <div class="col-md-6 mb-3">
-                                    <div class="score-badge tomatometer-badge">
-                                        <div class="small">🍅 Tomatometer</div>
-                                        <div id="tomatometer">N/A</div>
-                                    </div>
+                            <div id="trailerSection" class="d-none mb-4">
+                                <div class="section-title">
+                                    <i class="bi bi-play-circle"></i> Trailer
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <div class="score-badge audience-badge">
-                                        <div class="small">🍿 Audience Score</div>
-                                        <div id="audienceScore">N/A</div>
-                                    </div>
+                                <div class="trailer-container" id="trailerContainer"></div>
+                            </div>
+                            
+                            <div class="section-title">
+                                <i class="bi bi-info-circle"></i> Movie Info
+                            </div>
+                            <div class="info-table">
+                                <div class="info-row" id="directorRow">
+                                    <span class="info-label">Director:</span>
+                                    <span id="movieDirector"></span>
+                                </div>
+                                <div class="info-row" id="producerRow">
+                                    <span class="info-label">Producer:</span>
+                                    <span id="movieProducer"></span>
+                                </div>
+                                <div class="info-row" id="screenwriterRow">
+                                    <span class="info-label">Screenwriter:</span>
+                                    <span id="movieScreenwriter"></span>
+                                </div>
+                                <div class="info-row" id="distributorRow">
+                                    <span class="info-label">Distributor:</span>
+                                    <span id="movieDistributor"></span>
+                                </div>
+                                <div class="info-row" id="productionRow">
+                                    <span class="info-label">Production Co:</span>
+                                    <span id="movieProduction"></span>
+                                </div>
+                                <div class="info-row" id="languageRow">
+                                    <span class="info-label">Original Language:</span>
+                                    <span id="movieLanguage"></span>
+                                </div>
+                                <div class="info-row" id="releaseTheatersRow">
+                                    <span class="info-label">Release Date (Theaters):</span>
+                                    <span id="movieReleaseTheaters"></span>
+                                </div>
+                                <div class="info-row" id="rereleaseRow">
+                                    <span class="info-label">Rerelease Date:</span>
+                                    <span id="movieRerelease"></span>
+                                </div>
+                                <div class="info-row" id="releaseStreamingRow">
+                                    <span class="info-label">Release Date (Streaming):</span>
+                                    <span id="movieReleaseStreaming"></span>
+                                </div>
+                                <div class="info-row" id="boxOfficeRow">
+                                    <span class="info-label">Box Office (USA):</span>
+                                    <span id="movieBoxOffice"></span>
+                                </div>
+                                <div class="info-row" id="soundMixRow">
+                                    <span class="info-label">Sound Mix:</span>
+                                    <span id="movieSoundMix"></span>
+                                </div>
+                                <div class="info-row" id="aspectRatioRow">
+                                    <span class="info-label">Aspect Ratio:</span>
+                                    <span id="movieAspectRatio"></span>
                                 </div>
                             </div>
                             
-                            <!-- Cast -->
-                            <div class="mb-3">
-                                <h5><i class="bi bi-people"></i> Cast</h5>
-                                <div id="castContainer"></div>
+                            <div class="section-title">
+                                <i class="bi bi-people"></i> Cast
+                            </div>
+                            <div id="castContainer"></div>
+                            
+                            <div id="photosSection" class="d-none">
+                                <div class="section-title">
+                                    <i class="bi bi-images"></i> Photos
+                                </div>
+                                <div class="row photo-gallery" id="photoGallery"></div>
                             </div>
                             
-                            <!-- Link -->
-                            <a href="#" target="_blank" id="movieLink" class="btn btn-outline-primary">
-                                <i class="bi bi-box-arrow-up-right"></i> View on Rotten Tomatoes
-                            </a>
+                            <div class="mt-4">
+                                <a href="#" target="_blank" id="movieLink" class="btn btn-outline-primary">
+                                    <i class="bi bi-box-arrow-up-right"></i> View on Rotten Tomatoes
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         
-        <!-- Footer -->
         <div class="text-center mt-4 text-white">
-            <small>Powered by Rotten Tomatoes API | Made with ❤️</small>
+            <small>Powered by Rotten Tomatoes | Made with ❤️</small>
         </div>
     </div>
     
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
@@ -253,81 +354,103 @@
         }
         
         function displayResults(data) {
-            // Title and Year
-            document.getElementById('movieTitle').textContent = data.title || 'Unknown Title';
-            document.getElementById('movieYear').textContent = data.year || 'Year Unknown';
+            document.getElementById('movieTitle').textContent = data.title || 'Unknown';
+            document.getElementById('movieYear').textContent = data.year || 'N/A';
             
-            // MPAA Rating
-            const ratingEl = document.getElementById('movieRating');
-            if (data.rating) {
-                ratingEl.textContent = data.rating;
-                ratingEl.classList.remove('d-none');
-            } else {
-                ratingEl.classList.add('d-none');
-            }
-            
-            // Runtime
-            const runtimeEl = document.getElementById('movieRuntime');
-            if (data.runtime) {
-                runtimeEl.textContent = data.runtime;
-                runtimeEl.classList.remove('d-none');
-            } else {
-                runtimeEl.classList.add('d-none');
-            }
+            setInfoField('movieRating', data.rating, 'ratingRow');
+            setInfoField('movieRuntime', data.runtime, 'runtimeRow');
             
             // Genres
             const genresContainer = document.getElementById('genresContainer');
             if (data.genres && data.genres.length > 0) {
-                genresContainer.innerHTML = data.genres.map(genre => 
-                    `<span class="genre-badge">${genre}</span>`
-                ).join('');
+                genresContainer.innerHTML = data.genres.map(g => `<span class="genre-badge">${g}</span>`).join('');
             } else {
                 genresContainer.innerHTML = '';
             }
             
-            // Description
-            document.getElementById('movieDescription').textContent = 
-                data.description || 'No description available.';
+            // Synopsis
+            document.getElementById('movieSynopsis').textContent = data.synopsis || 'No synopsis available.';
             
-            // Director
-            document.getElementById('movieDirector').textContent = 
-                data.director || 'Unknown';
-            
-            // Poster Image
+            // Poster
             const posterEl = document.getElementById('moviePoster');
-            if (data.image_url) {
-                posterEl.src = data.image_url;
-                posterEl.alt = data.title || 'Movie Poster';
-                posterEl.classList.remove('d-none');
-            } else {
-                posterEl.src = 'https://via.placeholder.com/300x450?text=No+Image';
-                posterEl.alt = 'No poster available';
-            }
+            posterEl.src = data.image_url || 'https://via.placeholder.com/300x450?text=No+Image';
+            posterEl.alt = data.title || 'Poster';
             
             // Scores
-            document.getElementById('tomatometer').textContent = 
-                data.tomatometer || 'N/A';
-            document.getElementById('audienceScore').textContent = 
-                data.audience_score || 'N/A';
+            document.getElementById('tomatometer').textContent = data.tomatometer || 'N/A';
+            document.getElementById('audienceScore').textContent = data.audience_score || 'N/A';
+            
+            // Trailer
+            if (data.trailer_url) {
+                const trailerContainer = document.getElementById('trailerContainer');
+                let embedUrl = data.trailer_url;
+                
+                if (embedUrl.includes('youtube.com/watch')) {
+                    const videoId = new URL(embedUrl).searchParams.get('v');
+                    embedUrl = `https://www.youtube.com/embed/${videoId}`;
+                } else if (embedUrl.includes('youtu.be/')) {
+                    const videoId = embedUrl.split('youtu.be/')[1];
+                    embedUrl = `https://www.youtube.com/embed/${videoId}`;
+                }
+                
+                trailerContainer.innerHTML = `<iframe src="${embedUrl}" allowfullscreen></iframe>`;
+                document.getElementById('trailerSection').classList.remove('d-none');
+            } else {
+                document.getElementById('trailerSection').classList.add('d-none');
+            }
+            
+            // Movie Info
+            setInfoField('movieDirector', data.director, 'directorRow');
+            setInfoField('movieProducer', data.producer, 'producerRow');
+            setInfoField('movieScreenwriter', data.screenwriter, 'screenwriterRow');
+            setInfoField('movieDistributor', data.distributor, 'distributorRow');
+            setInfoField('movieProduction', data.production_co, 'productionRow');
+            setInfoField('movieLanguage', data.original_language, 'languageRow');
+            setInfoField('movieReleaseTheaters', data.release_date_theaters, 'releaseTheatersRow');
+            setInfoField('movieRerelease', data.rerelease_date, 'rereleaseRow');
+            setInfoField('movieReleaseStreaming', data.release_date_streaming, 'releaseStreamingRow');
+            setInfoField('movieBoxOffice', data.box_office_usa, 'boxOfficeRow');
+            setInfoField('movieSoundMix', data.sound_mix, 'soundMixRow');
+            setInfoField('movieAspectRatio', data.aspect_ratio, 'aspectRatioRow');
             
             // Cast
             const castContainer = document.getElementById('castContainer');
             if (data.cast && data.cast.length > 0) {
-                // Show first 6 cast members
-                castContainer.innerHTML = data.cast.slice(0, 6).map(actor => 
-                    `<div class="cast-item">
-                        <i class="bi bi-person-circle"></i> ${actor}
-                    </div>`
+                castContainer.innerHTML = data.cast.slice(0, 8).map(actor => 
+                    `<div class="cast-item"><i class="bi bi-person-circle"></i> ${actor}</div>`
                 ).join('');
             } else {
-                castContainer.innerHTML = '<p class="text-muted">Cast information not available</p>';
+                castContainer.innerHTML = '<p class="text-muted">Cast not available</p>';
             }
             
-            // Link
-            document.getElementById('movieLink').href = data.url || '#';
+            // Photos
+            if (data.photos && data.photos.length > 0) {
+                const photoGallery = document.getElementById('photoGallery');
+                photoGallery.innerHTML = data.photos.map(photo => 
+                    `<div class="col-md-4 col-6 mb-3">
+                        <img src="${photo}" alt="Movie Photo" onclick="window.open('${photo}', '_blank')">
+                    </div>`
+                ).join('');
+                document.getElementById('photosSection').classList.remove('d-none');
+            } else {
+                document.getElementById('photosSection').classList.add('d-none');
+            }
             
-            // Show results
+            document.getElementById('movieLink').href = data.url || '#';
             document.getElementById('results').classList.remove('d-none');
+        }
+        
+        function setInfoField(elementId, value, rowId) {
+            const element = document.getElementById(elementId);
+            const row = document.getElementById(rowId);
+            
+            if (value) {
+                element.textContent = value;
+                if (row) row.classList.remove('d-none');
+            } else {
+                element.textContent = 'N/A';
+                if (row) row.classList.add('d-none');
+            }
         }
         
         function searchExample(movieName) {
@@ -336,9 +459,8 @@
         }
         
         function showError(message) {
-            const errorAlert = document.getElementById('errorAlert');
             document.getElementById('errorMessage').textContent = message;
-            errorAlert.classList.remove('d-none');
+            document.getElementById('errorAlert').classList.remove('d-none');
         }
         
         function showLoading() {
@@ -358,4 +480,4 @@
         }
     </script>
 </body>
-                                </html>
+    </html>
