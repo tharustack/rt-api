@@ -1,11 +1,5 @@
 {
   "version": 2,
-  "routes": [
-    {
-      "src": "/api/rotten-tomatoes",
-      "dest": "api/rotten-tomatoes.py"
-    }
-  ],
   "functions": {
     "api/rotten-tomatoes.py": {
       "runtime": "python3.9",
