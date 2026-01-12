@@ -1,11 +1,5 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/rotten-tomatoes.py",
-      "use": "@vercel/python"
-    }
-  ],
   "routes": [
     {
       "src": "/api/rotten-tomatoes",
@@ -14,6 +8,7 @@
   ],
   "functions": {
     "api/rotten-tomatoes.py": {
+      "runtime": "python3.9",
       "maxDuration": 30
     }
   },
