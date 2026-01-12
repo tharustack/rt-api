@@ -2,26 +2,38 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/rating.py",
+      "src": "api/rotten-tomatoes.py",
       "use": "@vercel/python"
-    },
-    {
-      "src": "public/index.html",
-      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
-      "src": "/",
-      "dest": "public/index.html"
-    },
+      "src": "/api/rotten-tomatoes",
+      "dest": "api/rotten-tomatoes.py"
+    }
+  ],
+  "functions": {
+    "api/rotten-tomatoes.py": {
+      "maxDuration": 30
+    }
+  },
+  "headers": [
     {
-      "src": "/index.html",
-      "dest": "public/index.html"
-    },
-    {
-      "src": "/api/rating",
-      "dest": "/api/rating.py"
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type"
+        }
+      ]
     }
   ]
 }
