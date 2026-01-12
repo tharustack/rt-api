@@ -23,12 +23,10 @@ class RottenTomatoesScraper:
         """Search for a movie and return the first result's URL"""
         try:
             search_url = f"{self.base_url}/search?search={quote(movie_name)}"
-            print(f"Searching: {search_url}")
             response = requests.get(search_url, headers=self.headers, timeout=10)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, 'html.parser')
             
-            # Look for movie links in search results
             links = soup.find_all('a', {'href': re.compile(r'/m/[\w_\-]+$')})
             if not links:
                 return None
@@ -56,57 +54,40 @@ class RottenTomatoesScraper:
             if best_match:
                 href = best_match.get('href')
                 movie_url = self.base_url + href if not href.startswith('http') else href
-                print(f"Found movie URL: {movie_url}")
                 return movie_url
             
             return None
             
         except Exception as e:
-            print(f"Search error: {str(e)}")
             raise Exception(f"Search error: {str(e)}")
     
     def _extract_photos(self, soup, movie_url):
-        """Extract movie photos from Flixster CDN and other sources"""
-        print("Extracting photos...")
+        """Extract movie photos"""
         photos = []
         seen = set()
         
-        # Exclusion keywords for UI elements
         exclude_keywords = ['logo', 'icon', 'sprite', 'placeholder', 'avatar', 
                            'profile', 'button', 'arrow', 'star', 'badge', 'award']
         
         def is_valid_image(url):
-            """Check if URL is a valid image"""
             if not url or url in seen:
                 return False
-            
-            # Must be HTTP/HTTPS
             if not url.startswith('http'):
                 return False
-            
-            # Filter out UI elements
             url_lower = url.lower()
             if any(kw in url_lower for kw in exclude_keywords):
                 return False
-            
-            # Accept Flixster CDN images (main source for RT)
             if 'flixster.com' in url or 'rottentomatoes.com' in url:
                 return True
-            
-            # Accept common image formats
             if any(ext in url_lower for ext in ['.jpg', '.jpeg', '.png', '.webp']):
                 return True
-            
             return False
         
-        # Strategy 1: Extract all img tags from main page
-        print("Checking main page images...")
+        # Extract from main page
         for img in soup.find_all('img'):
-            # Try multiple attributes
             for attr in ['data-src', 'src', 'data-lazy-src']:
                 src = img.get(attr)
                 if src:
-                    # Make absolute URL
                     if src.startswith('//'):
                         src = 'https:' + src
                     elif src.startswith('/'):
@@ -115,32 +96,25 @@ class RottenTomatoesScraper:
                     if is_valid_image(src):
                         photos.append(src)
                         seen.add(src)
-                        print(f"Found photo: {src[:100]}...")
         
-        # Strategy 2: Check srcset attributes
-        print("Checking srcset attributes...")
+        # Check srcset
         for elem in soup.find_all(['img', 'source'], srcset=True):
             srcset = elem.get('srcset', '')
-            # Parse srcset - format: "url 1x, url 2x" or "url 100w, url 200w"
             urls = re.findall(r'(https?://[^\s,]+)', srcset)
-            
             for url in urls:
                 if is_valid_image(url):
                     photos.append(url)
                     seen.add(url)
-                    print(f"Found photo from srcset: {url[:100]}...")
         
-        # Strategy 3: Try the pictures/photos pages
+        # Try photos pages
         for endpoint in ['/pictures', '/photos']:
             try:
                 photos_url = movie_url.rstrip('/') + endpoint
-                print(f"Trying {endpoint} page: {photos_url}")
                 response = requests.get(photos_url, headers=self.headers, timeout=5)
                 
                 if response.status_code == 200:
                     photos_soup = BeautifulSoup(response.content, 'html.parser')
                     
-                    # Extract all images
                     for img in photos_soup.find_all('img'):
                         for attr in ['data-src', 'src', 'data-lazy-src']:
                             src = img.get(attr)
@@ -153,9 +127,7 @@ class RottenTomatoesScraper:
                                 if is_valid_image(src):
                                     photos.append(src)
                                     seen.add(src)
-                                    print(f"Found photo from {endpoint}: {src[:100]}...")
                     
-                    # Also check srcset on photos page
                     for elem in photos_soup.find_all(['img', 'source'], srcset=True):
                         srcset = elem.get('srcset', '')
                         urls = re.findall(r'(https?://[^\s,]+)', srcset)
@@ -163,24 +135,19 @@ class RottenTomatoesScraper:
                             if is_valid_image(url):
                                 photos.append(url)
                                 seen.add(url)
-                                print(f"Found photo from srcset on {endpoint}: {url[:100]}...")
                     
                     if len(photos) >= 10:
-                        print(f"Found enough photos from {endpoint} page, stopping...")
                         break
-                        
-            except Exception as e:
-                print(f"Error fetching {endpoint} page: {e}")
+            except:
+                pass
         
-        # Strategy 4: Look in JSON-LD for images
-        print("Checking JSON-LD data...")
+        # JSON-LD
         for script in soup.find_all('script', type='application/ld+json'):
             try:
                 data = json.loads(script.string)
                 if isinstance(data, list):
                     data = data[0] if data else {}
                 
-                # Check for image or images field
                 for field in ['image', 'images']:
                     if field in data:
                         img_data = data[field]
@@ -196,13 +163,10 @@ class RottenTomatoesScraper:
             except:
                 pass
         
-        print(f"Total photos found: {len(photos)}")
-        return photos[:25]  # Return up to 25 photos
+        return photos[:25]
     
     def _extract_synopsis(self, soup):
-        """Extract movie synopsis"""
-        print("Extracting synopsis...")
-        
+        """Extract synopsis"""
         exclude_patterns = [
             r'newsletter', r'subscribe', r'sign up', r'follow us',
             r'download', r'app store', r'google play', r'certified fresh',
@@ -220,15 +184,14 @@ class RottenTomatoesScraper:
         
         candidates = []
         
-        # Strategy 1: data-qa attributes
+        # data-qa attributes
         for elem in soup.find_all(attrs={'data-qa': re.compile(r'synopsis|movie-info-synopsis', re.I)}):
             text = elem.get_text(separator=' ', strip=True)
             text = re.sub(r'\s+', ' ', text)
             if is_valid_synopsis(text):
-                print(f"Found synopsis (data-qa): {text[:100]}...")
                 return text
         
-        # Strategy 2: JSON-LD
+        # JSON-LD
         for script in soup.find_all('script', type='application/ld+json'):
             try:
                 data = json.loads(script.string)
@@ -241,14 +204,14 @@ class RottenTomatoesScraper:
             except:
                 pass
         
-        # Strategy 3: Meta tags
+        # Meta tags
         meta_desc = soup.find('meta', property='og:description') or soup.find('meta', attrs={'name': 'description'})
         if meta_desc:
             content = meta_desc.get('content', '')
             if is_valid_synopsis(content):
                 candidates.append((len(content), content))
         
-        # Strategy 4: Class-based search
+        # Class-based
         for cls in ['synopsis', 'plot', 'movie-info-synopsis', 'description']:
             for elem in soup.find_all(class_=re.compile(cls, re.I)):
                 text = elem.get_text(separator=' ', strip=True)
@@ -260,50 +223,10 @@ class RottenTomatoesScraper:
             candidates.sort(key=lambda x: abs(x[0] - 300))
             for length, text in candidates:
                 if 100 <= length <= 1500:
-                    print(f"Found synopsis: {text[:100]}...")
                     return text
             return candidates[0][1]
         
-        print("No synopsis found")
         return None
-    
-    def _extract_release_dates(self, soup, movie_data):
-        """Extract release dates"""
-        print("Extracting release dates...")
-        page_text = soup.get_text()
-        
-        date_patterns = {
-            'theaters': [
-                r'Release\s+Date\s+\(Theaters?\)\s*:?\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
-                r'In\s+Theaters?\s*:?\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
-                r'Theatrical\s+Release\s*:?\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
-            ],
-            'streaming': [
-                r'Release\s+Date\s+\(Streaming\)\s*:?\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
-                r'Streaming\s*:?\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
-                r'On\s+Streaming\s*:?\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
-            ]
-        }
-        
-        for pattern in date_patterns['theaters']:
-            match = re.search(pattern, page_text, re.IGNORECASE)
-            if match:
-                date_str = match.group(1)
-                if re.match(r'^[A-Z][a-z]+\s+\d{1,2},\s+\d{4}$', date_str):
-                    movie_data['release_date_theaters'] = date_str
-                    print(f"Found theater release: {date_str}")
-                    break
-        
-        for pattern in date_patterns['streaming']:
-            match = re.search(pattern, page_text, re.IGNORECASE)
-            if match:
-                date_str = match.group(1)
-                if re.match(r'^[A-Z][a-z]+\s+\d{1,2},\s+\d{4}$', date_str):
-                    movie_data['release_date_streaming'] = date_str
-                    print(f"Found streaming release: {date_str}")
-                    break
-        
-        return movie_data
     
     def _extract_from_json_ld(self, soup, movie_data):
         """Extract from JSON-LD"""
@@ -435,7 +358,7 @@ class RottenTomatoesScraper:
             movie_data['audience_score'] = "N/A"
     
     def _extract_movie_info(self, soup):
-        """Extract additional metadata"""
+        """Extract metadata"""
         info = {}
         page_text = soup.get_text()
         
@@ -445,6 +368,8 @@ class RottenTomatoesScraper:
             'distributor': r'Distributor[:\s]+([^\n\r]+?)(?=\n|$)',
             'production_co': r'Production\s+Co[:\s]+([^\n\r]+?)(?=\n|$)',
             'original_language': r'Original\s+Language[:\s]+([^\n\r]+?)(?=\n|$)',
+            'release_date_theaters': r'(?:Release\s+Date\s+\(Theaters?\)|In\s+Theaters?)[:\s]+([^\n\r]+?)(?=\n|$)',
+            'release_date_streaming': r'(?:Release\s+Date\s+\(Streaming\)|Streaming)[:\s]+([^\n\r]+?)(?=\n|$)',
             'box_office_usa': r'Box\s+Office\s+\(Gross\s+USA\)[:\s]+([^\n\r]+?)(?=\n|$)',
             'sound_mix': r'Sound\s+Mix[:\s]+([^\n\r]+?)(?=\n|$)',
             'aspect_ratio': r'Aspect\s+Ratio[:\s]+([^\n\r]+?)(?=\n|$)',
@@ -464,7 +389,6 @@ class RottenTomatoesScraper:
     def get_all_movie_data(self, movie_url):
         """Get all movie data"""
         try:
-            print(f"\nFetching movie data from: {movie_url}")
             time.sleep(0.5)
             response = requests.get(movie_url, headers=self.headers, timeout=15)
             response.raise_for_status()
@@ -497,35 +421,23 @@ class RottenTomatoesScraper:
                 'url': movie_url
             }
             
-            # Extract data
             movie_data = self._extract_from_json_ld(soup, movie_data)
             movie_data = self._extract_from_html(soup, movie_data)
             
-            # Extract synopsis
             if not movie_data['synopsis']:
                 movie_data['synopsis'] = self._extract_synopsis(soup)
             
-            # Extract photos
             movie_data['photos'] = self._extract_photos(soup, movie_url)
             
-            # Extract release dates
-            movie_data = self._extract_release_dates(soup, movie_data)
-            
-            # Extract additional info
             info = self._extract_movie_info(soup)
             for key, value in info.items():
                 if not movie_data.get(key):
                     movie_data[key] = value
             
-            print(f"\n✓ Extraction complete!")
-            print(f"  - Title: {movie_data['title']}")
-            print(f"  - Photos: {len(movie_data['photos'])} found")
-            
             return movie_data
             
         except Exception as e:
-            print(f"Error: {str(e)}")
-            raise Exception(f"Error fetching movie data: {str(e)}")
+            raise Exception(f"Error: {str(e)}")
     
     def get_movie_ratings(self, movie_name):
         """Main method"""
@@ -547,29 +459,51 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
         
-        if 'movie' not in query_params:
+        # Route handling for different endpoints
+        if parsed_path.path == '/api/rotten-tomatoes':
+            if 'movie' not in query_params:
+                response = {
+                    'error': 'Missing movie parameter',
+                    'usage': 'GET /api/rotten-tomatoes?movie=Inception'
+                }
+                self.wfile.write(json.dumps(response, indent=2).encode())
+                return
+            
+            movie_name = query_params['movie'][0]
+            
+            try:
+                scraper = RottenTomatoesScraper()
+                movie_data = scraper.get_movie_ratings(movie_name)
+                
+                if movie_data:
+                    response = {
+                        'success': True,
+                        'source': 'rotten-tomatoes',
+                        'data': movie_data
+                    }
+                else:
+                    response = {
+                        'success': False,
+                        'error': 'Movie not found'
+                    }
+                
+                self.wfile.write(json.dumps(response, indent=2).encode())
+                
+            except Exception as e:
+                response = {
+                    'success': False,
+                    'error': str(e)
+                }
+                self.wfile.write(json.dumps(response, indent=2).encode())
+        
+        else:
+            # 404 for unknown endpoints
             response = {
-                'error': 'Missing movie parameter',
-                'usage': 'GET /api/rating?movie=Inception'
+                'error': 'Endpoint not found',
+                'available_endpoints': [
+                    '/api/rotten-tomatoes?movie=MovieName'
+                ]
             }
-            self.wfile.write(json.dumps(response, indent=2).encode())
-            return
-        
-        movie_name = query_params['movie'][0]
-        
-        try:
-            scraper = RottenTomatoesScraper()
-            movie_data = scraper.get_movie_ratings(movie_name)
-            
-            if movie_data:
-                response = {'success': True, 'data': movie_data}
-            else:
-                response = {'success': False, 'error': 'Movie not found'}
-            
-            self.wfile.write(json.dumps(response, indent=2).encode())
-            
-        except Exception as e:
-            response = {'success': False, 'error': str(e)}
             self.wfile.write(json.dumps(response, indent=2).encode())
     
     def do_OPTIONS(self):
