@@ -226,7 +226,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Website:** [https://www.cineapi.mywire.org/](https://www.cineapi.mywire.org/)
 - **Documentation:** [https://www.cineapi.mywire.org/docs](https://www.cineapi.mywire.org/docs)
 - **Playground:** [https://www.cineapi.mywire.org/playground](https://www.cineapi.mywire.org/playground)
-- **Telegram Channel:** [https://t.me/yourchannel](https://t.me/yourchannel)
+- **Telegram Channel:** [https://t.me/tharustack](https://t.me/tharustack)
 - **GitHub:** [https://github.com/tharustack/rt-api](https://github.com/tharustack/rt-api)
 
 ## 🙏 Acknowledgments
