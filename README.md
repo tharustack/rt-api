@@ -169,8 +169,8 @@ getMovieData('Inception').then(data => console.log(data));
 
 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/rotten-tomatoes-api.git
-cd rotten-tomatoes-api
+git clone https://github.com/tharustack/rt-api.git
+cd rt-api
 ```
 
 2. Install dependencies
@@ -223,11 +223,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔗 Links
 
-- **Website:** [https://rt-api-jade.vercel.app/](https://rt-api-jade.vercel.app/)
-- **Documentation:** [https://your-website-here.com/docs](https://your-website-here.com/docs)
-- **Playground:** [https://your-website-here.com/playground](https://your-website-here.com/playground)
+- **Website:** [https://www.cineapi.mywire.org/](https://www.cineapi.mywire.org/)
+- **Documentation:** [https://www.cineapi.mywire.org/docs](https://www.cineapi.mywire.org/docs)
+- **Playground:** [https://www.cineapi.mywire.org/playground](https://www.cineapi.mywire.org/playground)
 - **Telegram Channel:** [https://t.me/yourchannel](https://t.me/yourchannel)
-- **GitHub:** [https://github.com/yourusername/rotten-tomatoes-api](https://github.com/yourusername/rotten-tomatoes-api)
+- **GitHub:** [https://github.com/tharustack/rt-api](https://github.com/tharustack/rt-api)
 
 ## 🙏 Acknowledgments
 
@@ -242,7 +242,7 @@ This API is for educational purposes only. All movie data belongs to Rotten Toma
 
 **Made with ❤️ by Tharusha Dilshan**
 
-[![Star on GitHub](https://img.shields.io/github/stars/yourusername/rotten-tomatoes-api?style=social)](https://github.com/tharustack/rt-api)
+[![Star on GitHub](https://img.shields.io/github/stars/tharustack/rt-api?style=social)](https://github.com/tharustack/rt-api)
 
 
 ---
