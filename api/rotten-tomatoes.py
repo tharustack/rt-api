@@ -6,7 +6,6 @@ from bs4 import BeautifulSoup
 import time
 import re
 from urllib.parse import quote
-from datetime import datetime
 
 class RottenTomatoesScraper:
     def __init__(self):
@@ -29,6 +28,7 @@ class RottenTomatoesScraper:
             response.raise_for_status()
             soup = BeautifulSoup(response.content, 'html.parser')
             
+            # Look for movie links in search results
             links = soup.find_all('a', {'href': re.compile(r'/m/[\w_\-]+$')})
             if not links:
                 return None
@@ -71,47 +71,66 @@ class RottenTomatoesScraper:
         photos = []
         seen = set()
         
+        # Exclusion keywords for UI elements
         exclude_keywords = ['logo', 'icon', 'sprite', 'placeholder', 'avatar', 
                            'profile', 'button', 'arrow', 'star', 'badge', 'award']
         
         def is_valid_image(url):
+            """Check if URL is a valid image"""
             if not url or url in seen:
                 return False
+            
+            # Must be HTTP/HTTPS
             if not url.startswith('http'):
                 return False
+            
+            # Filter out UI elements
             url_lower = url.lower()
             if any(kw in url_lower for kw in exclude_keywords):
                 return False
+            
+            # Accept Flixster CDN images (main source for RT)
             if 'flixster.com' in url or 'rottentomatoes.com' in url:
                 return True
+            
+            # Accept common image formats
             if any(ext in url_lower for ext in ['.jpg', '.jpeg', '.png', '.webp']):
                 return True
+            
             return False
         
+        # Strategy 1: Extract all img tags from main page
         print("Checking main page images...")
         for img in soup.find_all('img'):
+            # Try multiple attributes
             for attr in ['data-src', 'src', 'data-lazy-src']:
                 src = img.get(attr)
                 if src:
+                    # Make absolute URL
                     if src.startswith('//'):
                         src = 'https:' + src
                     elif src.startswith('/'):
                         src = self.base_url + src
+                    
                     if is_valid_image(src):
                         photos.append(src)
                         seen.add(src)
                         print(f"Found photo: {src[:100]}...")
         
+        # Strategy 2: Check srcset attributes
         print("Checking srcset attributes...")
         for elem in soup.find_all(['img', 'source'], srcset=True):
             srcset = elem.get('srcset', '')
+            # Parse srcset - format: "url 1x, url 2x" or "url 100w, url 200w"
             urls = re.findall(r'(https?://[^\s,]+)', srcset)
+            
             for url in urls:
                 if is_valid_image(url):
                     photos.append(url)
                     seen.add(url)
                     print(f"Found photo from srcset: {url[:100]}...")
         
+        # Strategy 3: Try the pictures/photos pages
         for endpoint in ['/pictures', '/photos']:
             try:
                 photos_url = movie_url.rstrip('/') + endpoint
@@ -121,6 +140,7 @@ class RottenTomatoesScraper:
                 if response.status_code == 200:
                     photos_soup = BeautifulSoup(response.content, 'html.parser')
                     
+                    # Extract all images
                     for img in photos_soup.find_all('img'):
                         for attr in ['data-src', 'src', 'data-lazy-src']:
                             src = img.get(attr)
@@ -129,11 +149,13 @@ class RottenTomatoesScraper:
                                     src = 'https:' + src
                                 elif src.startswith('/'):
                                     src = self.base_url + src
+                                
                                 if is_valid_image(src):
                                     photos.append(src)
                                     seen.add(src)
                                     print(f"Found photo from {endpoint}: {src[:100]}...")
                     
+                    # Also check srcset on photos page
                     for elem in photos_soup.find_all(['img', 'source'], srcset=True):
                         srcset = elem.get('srcset', '')
                         urls = re.findall(r'(https?://[^\s,]+)', srcset)
@@ -150,6 +172,7 @@ class RottenTomatoesScraper:
             except Exception as e:
                 print(f"Error fetching {endpoint} page: {e}")
         
+        # Strategy 4: Look in JSON-LD for images
         print("Checking JSON-LD data...")
         for script in soup.find_all('script', type='application/ld+json'):
             try:
@@ -157,6 +180,7 @@ class RottenTomatoesScraper:
                 if isinstance(data, list):
                     data = data[0] if data else {}
                 
+                # Check for image or images field
                 for field in ['image', 'images']:
                     if field in data:
                         img_data = data[field]
@@ -173,7 +197,7 @@ class RottenTomatoesScraper:
                 pass
         
         print(f"Total photos found: {len(photos)}")
-        return photos[:25]
+        return photos[:25]  # Return up to 25 photos
     
     def _extract_synopsis(self, soup):
         """Extract movie synopsis"""
@@ -196,6 +220,7 @@ class RottenTomatoesScraper:
         
         candidates = []
         
+        # Strategy 1: data-qa attributes
         for elem in soup.find_all(attrs={'data-qa': re.compile(r'synopsis|movie-info-synopsis', re.I)}):
             text = elem.get_text(separator=' ', strip=True)
             text = re.sub(r'\s+', ' ', text)
@@ -203,6 +228,7 @@ class RottenTomatoesScraper:
                 print(f"Found synopsis (data-qa): {text[:100]}...")
                 return text
         
+        # Strategy 2: JSON-LD
         for script in soup.find_all('script', type='application/ld+json'):
             try:
                 data = json.loads(script.string)
@@ -215,12 +241,14 @@ class RottenTomatoesScraper:
             except:
                 pass
         
+        # Strategy 3: Meta tags
         meta_desc = soup.find('meta', property='og:description') or soup.find('meta', attrs={'name': 'description'})
         if meta_desc:
             content = meta_desc.get('content', '')
             if is_valid_synopsis(content):
                 candidates.append((len(content), content))
         
+        # Strategy 4: Class-based search
         for cls in ['synopsis', 'plot', 'movie-info-synopsis', 'description']:
             for elem in soup.find_all(class_=re.compile(cls, re.I)):
                 text = elem.get_text(separator=' ', strip=True)
@@ -246,55 +274,39 @@ class RottenTomatoesScraper:
         
         date_patterns = {
             'theaters': [
-                r'Release\s+Date\s+\(Theaters?\)\s*:?\s*([A-Z][a-z]{2,8}\s+\d{1,2},\s+\d{4})',
-                r'In\s+Theaters?\s*:?\s*([A-Z][a-z]{2,8}\s+\d{1,2},\s+\d{4})',
-                r'Theatrical\s+Release\s*:?\s*([A-Z][a-z]{2,8}\s+\d{1,2},\s+\d{4})',
+                r'Release\s+Date\s+\(Theaters?\)\s*:?\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
+                r'In\s+Theaters?\s*:?\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
+                r'Theatrical\s+Release\s*:?\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
             ],
             'streaming': [
-                r'Release\s+Date\s+\(Streaming\)\s*:?\s*([A-Z][a-z]{2,8}\s+\d{1,2},\s+\d{4})',
-                r'Streaming\s*:?\s*([A-Z][a-z]{2,8}\s+\d{1,2},\s+\d{4})',
-                r'On\s+Streaming\s*:?\s*([A-Z][a-z]{2,8}\s+\d{1,2},\s+\d{4})',
-            ],
-            'rerelease': [
-                r'Re-?release\s+Date\s*:?\s*([A-Z][a-z]{2,8}\s+\d{1,2},\s+\d{4})',
+                r'Release\s+Date\s+\(Streaming\)\s*:?\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
+                r'Streaming\s*:?\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
+                r'On\s+Streaming\s*:?\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
             ]
         }
         
-        if not movie_data.get('release_date_theaters'):
-            for pattern in date_patterns['theaters']:
-                match = re.search(pattern, page_text, re.IGNORECASE)
-                if match:
-                    date_str = match.group(1).strip()
-                    if re.match(r'^[A-Z][a-z]{2,8}\s+\d{1,2},\s+\d{4}$', date_str):
-                        movie_data['release_date_theaters'] = date_str
-                        print(f"Found theater release: {date_str}")
-                        break
+        for pattern in date_patterns['theaters']:
+            match = re.search(pattern, page_text, re.IGNORECASE)
+            if match:
+                date_str = match.group(1)
+                if re.match(r'^[A-Z][a-z]+\s+\d{1,2},\s+\d{4}$', date_str):
+                    movie_data['release_date_theaters'] = date_str
+                    print(f"Found theater release: {date_str}")
+                    break
         
-        if not movie_data.get('release_date_streaming'):
-            for pattern in date_patterns['streaming']:
-                match = re.search(pattern, page_text, re.IGNORECASE)
-                if match:
-                    date_str = match.group(1).strip()
-                    if re.match(r'^[A-Z][a-z]{2,8}\s+\d{1,2},\s+\d{4}$', date_str):
-                        movie_data['release_date_streaming'] = date_str
-                        print(f"Found streaming release: {date_str}")
-                        break
-        
-        if not movie_data.get('rerelease_date'):
-            for pattern in date_patterns['rerelease']:
-                match = re.search(pattern, page_text, re.IGNORECASE)
-                if match:
-                    date_str = match.group(1).strip()
-                    if re.match(r'^[A-Z][a-z]{2,8}\s+\d{1,2},\s+\d{4}$', date_str):
-                        movie_data['rerelease_date'] = date_str
-                        print(f"Found rerelease: {date_str}")
-                        break
+        for pattern in date_patterns['streaming']:
+            match = re.search(pattern, page_text, re.IGNORECASE)
+            if match:
+                date_str = match.group(1)
+                if re.match(r'^[A-Z][a-z]+\s+\d{1,2},\s+\d{4}$', date_str):
+                    movie_data['release_date_streaming'] = date_str
+                    print(f"Found streaming release: {date_str}")
+                    break
         
         return movie_data
     
     def _extract_from_json_ld(self, soup, movie_data):
         """Extract from JSON-LD"""
-        print("Extracting from JSON-LD...")
         scripts = soup.find_all('script', {'type': 'application/ld+json'})
         
         for script in scripts:
@@ -311,21 +323,10 @@ class RottenTomatoesScraper:
                     movie_data['image_url'] = img if isinstance(img, str) else (img[0] if isinstance(img, list) else None)
                 
                 if 'datePublished' in data:
-                    date_pub = str(data['datePublished'])
-                    year_match = re.search(r'(19|20)\d{2}', date_pub)
-                    if year_match and not movie_data['year']:
-                        movie_data['year'] = year_match.group(0)
-                        print(f"Found year: {movie_data['year']}")
-                    
-                    if not movie_data['release_date_theaters']:
-                        full_date_match = re.search(r'(\d{4})-(\d{2})-(\d{2})', date_pub)
-                        if full_date_match:
-                            try:
-                                dt = datetime.strptime(full_date_match.group(0), '%Y-%m-%d')
-                                formatted_date = dt.strftime('%B %d, %Y')
-                                movie_data['release_date_theaters'] = formatted_date
-                            except:
-                                pass
+                    if not movie_data['year']:
+                        year_match = re.search(r'(19|20)\d{2}', str(data['datePublished']))
+                        if year_match:
+                            movie_data['year'] = year_match.group(0)
                 
                 if 'genre' in data and not movie_data['genres']:
                     genres = data['genre']
@@ -353,8 +354,7 @@ class RottenTomatoesScraper:
                     if 'ratingValue' in rating:
                         movie_data['tomatometer'] = f"{rating['ratingValue']}%"
                 
-            except Exception as e:
-                print(f"Error parsing JSON-LD: {e}")
+            except:
                 continue
         
         return movie_data
@@ -366,28 +366,32 @@ class RottenTomatoesScraper:
             h1 = soup.find('h1')
             if h1:
                 title_text = h1.get_text(strip=True)
+                # Extract year from title FIRST (most reliable)
                 year_match = re.search(r'\((\d{4})\)', title_text)
                 if year_match and not movie_data['year']:
                     movie_data['year'] = year_match.group(1)
-                    print(f"Found year: {movie_data['year']}")
+                    print(f"Found year in title: {movie_data['year']}")
+                # Clean title
                 title = re.sub(r'\s*\(\d{4}\)\s*$', '', title_text)
                 movie_data['title'] = title
         
+        # Only search for year if not found in title
         if not movie_data['year']:
-            year_patterns = [r'(?:^|\s)(\d{4})(?:\s|$)']
-            for pattern in year_patterns:
-                matches = re.findall(pattern, soup.get_text())
-                for match in matches:
-                    year = int(match)
-                    if 1900 <= year <= 2030:
-                        movie_data['year'] = str(year)
-                        print(f"Found year: {year}")
-                        break
-                if movie_data['year']:
-                    break
+            h1 = soup.find('h1')
+            if h1:
+                # Look near the h1 tag only, not entire page
+                parent_section = h1.parent
+                if parent_section:
+                    section_text = parent_section.get_text()
+                    # Find years near the title
+                    year_matches = re.findall(r'\b(19\d{2}|20[0-2]\d)\b', section_text)
+                    if year_matches:
+                        # Use first reasonable year found
+                        movie_data['year'] = year_matches[0]
+                        print(f"Found year near title: {movie_data['year']}")
         
         if not movie_data['runtime']:
-            runtime_match = re.search(r'(\d+h\s*\d+m|\d+\s*min)', soup.get_text(), re.IGNORECASE)
+            runtime_match = re.search(r'(\d+h\s*\d+m|\d+\s*min)', soup.get_text())
             if runtime_match:
                 movie_data['runtime'] = runtime_match.group(1).strip()
         
@@ -397,6 +401,7 @@ class RottenTomatoesScraper:
                 movie_data['rating'] = rating_match.group(1)
         
         self._extract_scores(soup, movie_data)
+        
         return movie_data
     
     def _extract_scores(self, soup, movie_data):
@@ -409,8 +414,10 @@ class RottenTomatoesScraper:
             if match:
                 val = match.group(1)
                 parent_text = elem.parent.get_text().lower() if elem.parent else ""
+                
                 if val not in seen_percents:
                     seen_percents[val] = {'contexts': []}
+                
                 seen_percents[val]['contexts'].append(parent_text)
                 if val not in all_percents:
                     all_percents.append(val)
@@ -504,15 +511,21 @@ class RottenTomatoesScraper:
                 'url': movie_url
             }
             
+            # Extract data
             movie_data = self._extract_from_json_ld(soup, movie_data)
             movie_data = self._extract_from_html(soup, movie_data)
             
+            # Extract synopsis
             if not movie_data['synopsis']:
                 movie_data['synopsis'] = self._extract_synopsis(soup)
             
+            # Extract photos
             movie_data['photos'] = self._extract_photos(soup, movie_url)
+            
+            # Extract release dates
             movie_data = self._extract_release_dates(soup, movie_data)
             
+            # Extract additional info
             info = self._extract_movie_info(soup)
             for key, value in info.items():
                 if not movie_data.get(key):
@@ -520,8 +533,6 @@ class RottenTomatoesScraper:
             
             print(f"\n✓ Extraction complete!")
             print(f"  - Title: {movie_data['title']}")
-            print(f"  - Year: {movie_data['year']}")
-            print(f"  - Theater Release: {movie_data['release_date_theaters']}")
             print(f"  - Photos: {len(movie_data['photos'])} found")
             
             return movie_data
