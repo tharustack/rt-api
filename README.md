@@ -8,9 +8,9 @@ A free, open-source REST API that provides comprehensive movie data from Rotten 
 
 ## 🌐 Live Demo & Documentation
 
-**Full Documentation:** [https://your-website-here.com](https://your-website-here.com)
+**Full Documentation:** [https://www.cineapi.mywire.org/](https://www.cineapi.mywire.org/)
 
-**API Endpoint:** `https://your-api-domain.com/api/rotten-tomatoes?movie=Inception`
+**API Endpoint:** `https://rt-api-jade.vercel.app/api/rotten-tomatoes?movie=Inception`
 
 ## ✨ Features
 
@@ -29,7 +29,7 @@ A free, open-source REST API that provides comprehensive movie data from Rotten 
 
 ### Making a Request
 ```bash
-curl "https://your-api-domain.com/api/rotten-tomatoes?movie=Inception"
+curl "https://rt-api-jade.vercel.app/rotten-tomatoes?movie=Inception"
 ```
 
 ### Example Response
@@ -223,7 +223,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔗 Links
 
-- **Website:** [https://your-website-here.com](https://your-website-here.com)
+- **Website:** [https://rt-api-jade.vercel.app/](https://rt-api-jade.vercel.app/)
 - **Documentation:** [https://your-website-here.com/docs](https://your-website-here.com/docs)
 - **Playground:** [https://your-website-here.com/playground](https://your-website-here.com/playground)
 - **Telegram Channel:** [https://t.me/yourchannel](https://t.me/yourchannel)
