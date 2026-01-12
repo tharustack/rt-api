@@ -62,7 +62,7 @@ class RottenTomatoesScraper:
             raise Exception(f"Search error: {str(e)}")
     
     def _extract_photos(self, soup, movie_url):
-        """Extract movie photos"""
+        """Extract movie photos from Flixster CDN and other sources"""
         photos = []
         seen = set()
         
@@ -228,6 +228,41 @@ class RottenTomatoesScraper:
         
         return None
     
+    def _extract_release_dates(self, soup, movie_data):
+        """Extract release dates"""
+        page_text = soup.get_text()
+        
+        date_patterns = {
+            'theaters': [
+                r'Release\s+Date\s+\(Theaters?\)\s*:?\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
+                r'In\s+Theaters?\s*:?\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
+                r'Theatrical\s+Release\s*:?\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
+            ],
+            'streaming': [
+                r'Release\s+Date\s+\(Streaming\)\s*:?\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
+                r'Streaming\s*:?\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
+                r'On\s+Streaming\s*:?\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
+            ]
+        }
+        
+        for pattern in date_patterns['theaters']:
+            match = re.search(pattern, page_text, re.IGNORECASE)
+            if match:
+                date_str = match.group(1)
+                if re.match(r'^[A-Z][a-z]+\s+\d{1,2},\s+\d{4}$', date_str):
+                    movie_data['release_date_theaters'] = date_str
+                    break
+        
+        for pattern in date_patterns['streaming']:
+            match = re.search(pattern, page_text, re.IGNORECASE)
+            if match:
+                date_str = match.group(1)
+                if re.match(r'^[A-Z][a-z]+\s+\d{1,2},\s+\d{4}$', date_str):
+                    movie_data['release_date_streaming'] = date_str
+                    break
+        
+        return movie_data
+    
     def _extract_from_json_ld(self, soup, movie_data):
         """Extract from JSON-LD"""
         scripts = soup.find_all('script', {'type': 'application/ld+json'})
@@ -245,11 +280,10 @@ class RottenTomatoesScraper:
                     img = data['image']
                     movie_data['image_url'] = img if isinstance(img, str) else (img[0] if isinstance(img, list) else None)
                 
-                if 'datePublished' in data:
-                    if not movie_data['year']:
-                        year_match = re.search(r'(19|20)\d{2}', str(data['datePublished']))
-                        if year_match:
-                            movie_data['year'] = year_match.group(0)
+                if 'datePublished' in data and not movie_data['year']:
+                    year_match = re.search(r'(19|20)\d{2}', str(data['datePublished']))
+                    if year_match:
+                        movie_data['year'] = year_match.group(0)
                 
                 if 'genre' in data and not movie_data['genres']:
                     genres = data['genre']
@@ -368,8 +402,6 @@ class RottenTomatoesScraper:
             'distributor': r'Distributor[:\s]+([^\n\r]+?)(?=\n|$)',
             'production_co': r'Production\s+Co[:\s]+([^\n\r]+?)(?=\n|$)',
             'original_language': r'Original\s+Language[:\s]+([^\n\r]+?)(?=\n|$)',
-            'release_date_theaters': r'(?:Release\s+Date\s+\(Theaters?\)|In\s+Theaters?)[:\s]+([^\n\r]+?)(?=\n|$)',
-            'release_date_streaming': r'(?:Release\s+Date\s+\(Streaming\)|Streaming)[:\s]+([^\n\r]+?)(?=\n|$)',
             'box_office_usa': r'Box\s+Office\s+\(Gross\s+USA\)[:\s]+([^\n\r]+?)(?=\n|$)',
             'sound_mix': r'Sound\s+Mix[:\s]+([^\n\r]+?)(?=\n|$)',
             'aspect_ratio': r'Aspect\s+Ratio[:\s]+([^\n\r]+?)(?=\n|$)',
@@ -421,14 +453,21 @@ class RottenTomatoesScraper:
                 'url': movie_url
             }
             
+            # Extract data
             movie_data = self._extract_from_json_ld(soup, movie_data)
             movie_data = self._extract_from_html(soup, movie_data)
             
+            # Extract synopsis
             if not movie_data['synopsis']:
                 movie_data['synopsis'] = self._extract_synopsis(soup)
             
+            # Extract photos
             movie_data['photos'] = self._extract_photos(soup, movie_url)
             
+            # Extract release dates (IMPORTANT!)
+            movie_data = self._extract_release_dates(soup, movie_data)
+            
+            # Extract additional info
             info = self._extract_movie_info(soup)
             for key, value in info.items():
                 if not movie_data.get(key):
@@ -459,50 +498,38 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
         
-        # Route handling for different endpoints
-        if parsed_path.path == '/api/rotten-tomatoes':
-            if 'movie' not in query_params:
+        if 'movie' not in query_params:
+            response = {
+                'error': 'Missing movie parameter',
+                'usage': 'GET /api/rotten-tomatoes?movie=Inception'
+            }
+            self.wfile.write(json.dumps(response, indent=2).encode())
+            return
+        
+        movie_name = query_params['movie'][0]
+        
+        try:
+            scraper = RottenTomatoesScraper()
+            movie_data = scraper.get_movie_ratings(movie_name)
+            
+            if movie_data:
                 response = {
-                    'error': 'Missing movie parameter',
-                    'usage': 'GET /api/rotten-tomatoes?movie=Inception'
+                    'success': True,
+                    'source': 'rotten-tomatoes',
+                    'data': movie_data
                 }
-                self.wfile.write(json.dumps(response, indent=2).encode())
-                return
-            
-            movie_name = query_params['movie'][0]
-            
-            try:
-                scraper = RottenTomatoesScraper()
-                movie_data = scraper.get_movie_ratings(movie_name)
-                
-                if movie_data:
-                    response = {
-                        'success': True,
-                        'source': 'rotten-tomatoes',
-                        'data': movie_data
-                    }
-                else:
-                    response = {
-                        'success': False,
-                        'error': 'Movie not found'
-                    }
-                
-                self.wfile.write(json.dumps(response, indent=2).encode())
-                
-            except Exception as e:
+            else:
                 response = {
                     'success': False,
-                    'error': str(e)
+                    'error': 'Movie not found'
                 }
-                self.wfile.write(json.dumps(response, indent=2).encode())
-        
-        else:
-            # 404 for unknown endpoints
+            
+            self.wfile.write(json.dumps(response, indent=2).encode())
+            
+        except Exception as e:
             response = {
-                'error': 'Endpoint not found',
-                'available_endpoints': [
-                    '/api/rotten-tomatoes?movie=MovieName'
-                ]
+                'success': False,
+                'error': str(e)
             }
             self.wfile.write(json.dumps(response, indent=2).encode())
     
