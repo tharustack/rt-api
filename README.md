@@ -1,101 +1,38 @@
-# 🍅 Rotten Tomatoes Rating API
+# 🎬 Rotten Tomatoes API
 
-A serverless API to fetch Rotten Tomatoes ratings deployed on Vercel.
+A free, open-source REST API that provides comprehensive movie data from Rotten Tomatoes. Get ratings, cast information, synopsis, photos, and much more - all without any authentication!
 
-## 🚀 Deploy to Vercel
+[![API Status](https://img.shields.io/badge/status-active-success.svg)]()
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
-### Method 1: Using Vercel CLI (Recommended)
+## 🌐 Live Demo & Documentation
 
-1. **Install Vercel CLI:**
+**Full Documentation:** [https://your-website-here.com](https://your-website-here.com)
+
+**API Endpoint:** `https://your-api-domain.com/api/rotten-tomatoes?movie=Inception`
+
+## ✨ Features
+
+- 🍅 **Tomatometer & Audience Scores** - Get both critic and audience ratings
+- 🎭 **Complete Movie Info** - Title, year, runtime, rating, genres
+- 📝 **Synopsis** - Full movie plot description
+- 👥 **Cast & Crew** - Director, producer, screenwriter, actors
+- 📸 **Movie Photos** - High-quality images and posters (up to 25)
+- 📅 **Release Dates** - Theater, streaming, and rerelease dates
+- 💰 **Box Office Data** - US gross earnings
+- 🎬 **Production Details** - Distributor, production company, sound mix, aspect ratio
+- 🌍 **Original Language** - Movie's original language
+- 🔗 **Direct RT Link** - Link to Rotten Tomatoes page
+
+## 🚀 Quick Start
+
+### Making a Request
 ```bash
-npm install -g vercel
+curl "https://your-api-domain.com/api/rotten-tomatoes?movie=Inception"
 ```
 
-2. **Login to Vercel:**
-```bash
-vercel login
-```
-
-3. **Deploy:**
-```bash
-vercel
-```
-
-Follow the prompts:
-- Set up and deploy? **Y**
-- Which scope? Select your account
-- Link to existing project? **N**
-- Project name? (press enter for default)
-- Directory? `./` (press enter)
-- Want to override settings? **N**
-
-4. **Deploy to Production:**
-```bash
-vercel --prod
-```
-
-### Method 2: Using GitHub + Vercel Dashboard
-
-1. **Push to GitHub:**
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
-git push -u origin main
-```
-
-2. **Connect to Vercel:**
-   - Go to [vercel.com](https://vercel.com)
-   - Click "Add New" → "Project"
-   - Import your GitHub repository
-   - Click "Deploy"
-
-## 📁 Project Structure
-
-```
-your-project/
-├── api/
-│   └── rating.py          # API endpoint
-├── vercel.json            # Vercel configuration
-├── requirements.txt       # Python dependencies
-└── README.md             # This file
-```
-
-## 🔧 API Usage
-
-### Endpoint
-```
-GET /api/rating?movie=MOVIE_NAME
-```
-
-### Example Requests
-
-**Using cURL:**
-```bash
-curl "https://your-project.vercel.app/api/rating?movie=Inception"
-```
-
-**Using JavaScript (fetch):**
-```javascript
-fetch('https://your-project.vercel.app/api/rating?movie=Inception')
-  .then(response => response.json())
-  .then(data => console.log(data));
-```
-
-**Using Python:**
-```python
-import requests
-
-response = requests.get('https://your-project.vercel.app/api/rating', 
-                       params={'movie': 'Inception'})
-print(response.json())
-```
-
-### Response Format
-
-**Success Response:**
+### Example Response
 ```json
 {
   "success": true,
@@ -104,12 +41,65 @@ print(response.json())
     "year": "2010",
     "tomatometer": "87%",
     "audience_score": "91%",
+    "synopsis": "Dom Cobb is a skilled thief...",
+    "genres": ["Action", "Sci-Fi", "Thriller"],
+    "director": "Christopher Nolan",
+    "cast": ["Leonardo DiCaprio", "Tom Hardy", "Elliot Page"],
+    "rating": "PG-13",
+    "runtime": "2h 28m",
+    "release_date_theaters": "July 16, 2010",
+    "image_url": "https://...",
+    "photos": ["https://...", "https://..."],
     "url": "https://www.rottentomatoes.com/m/inception"
   }
 }
 ```
 
-**Error Response:**
+## 📚 API Documentation
+
+### Endpoint
+```
+GET /api/rotten-tomatoes
+```
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `movie` | string | Yes | Movie name to search for |
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Request success status |
+| `data` | object | Movie data object |
+| `title` | string | Movie title |
+| `year` | string | Release year |
+| `synopsis` | string | Movie plot description |
+| `genres` | array | List of genres |
+| `director` | string | Director name |
+| `producer` | string | Producer name(s) |
+| `screenwriter` | string | Screenwriter name(s) |
+| `cast` | array | List of main actors |
+| `distributor` | string | Distribution company |
+| `production_co` | string | Production company |
+| `rating` | string | MPAA rating (G, PG, PG-13, R, etc.) |
+| `original_language` | string | Original language |
+| `release_date_theaters` | string | Theater release date |
+| `rerelease_date` | string | Rerelease date (if applicable) |
+| `release_date_streaming` | string | Streaming release date |
+| `box_office_usa` | string | US box office gross |
+| `runtime` | string | Movie duration |
+| `sound_mix` | string | Audio format |
+| `aspect_ratio` | string | Screen aspect ratio |
+| `tomatometer` | string | Critic score percentage |
+| `audience_score` | string | Audience score percentage |
+| `image_url` | string | Main poster image URL |
+| `photos` | array | Array of movie photo URLs (up to 25) |
+| `url` | string | Rotten Tomatoes page URL |
+
+### Error Response
 ```json
 {
   "success": false,
@@ -117,77 +107,212 @@ print(response.json())
 }
 ```
 
-## 🧪 Test Locally
+## 💻 Code Examples
 
-1. **Install dependencies:**
-```bash
-pip install -r requirements.txt
-pip install vercel
-```
+### JavaScript (Fetch)
+```javascript
+const movieName = 'Inception';
+const response = await fetch(`https://your-api-domain.com/api/rotten-tomatoes?movie=${encodeURIComponent(movieName)}`);
+const data = await response.json();
 
-2. **Run locally:**
-```bash
-vercel dev
-```
-
-3. **Test:**
-```bash
-curl "http://localhost:3000/api/rating?movie=Inception"
-```
-
-## 🎯 Example Movies to Test
-
-- Inception
-- The Shawshank Redemption
-- The Dark Knight
-- Interstellar
-- Pulp Fiction
-
-## ⚠️ Important Notes
-
-1. **Rate Limiting:** Be respectful with requests. Add delays between calls.
-2. **Caching:** Consider implementing caching for frequently requested movies.
-3. **Terms of Service:** Review Rotten Tomatoes' ToS before heavy usage.
-4. **Timeouts:** Serverless functions have execution time limits (10s on free tier).
-
-## 🔒 Environment Variables (Optional)
-
-If you want to add API key protection:
-
-1. Add to `vercel.json`:
-```json
-{
-  "env": {
-    "API_KEY": "@api-key"
-  }
+if (data.success) {
+  console.log(`${data.data.title} - Tomatometer: ${data.data.tomatometer}`);
 }
 ```
 
-2. Set in Vercel dashboard or CLI:
-```bash
-vercel env add API_KEY
-```
-
-3. Check in your API:
+### Python (Requests)
 ```python
-api_key = os.environ.get('API_KEY')
-if request_key != api_key:
-    return error
+import requests
+
+movie_name = 'Inception'
+response = requests.get(f'https://your-api-domain.com/api/rotten-tomatoes?movie={movie_name}')
+data = response.json()
+
+if data['success']:
+    print(f"{data['data']['title']} - Tomatometer: {data['data']['tomatometer']}")
 ```
 
-## 📝 License
+### cURL
+```bash
+curl "https://your-api-domain.com/api/rotten-tomatoes?movie=The%20Godfather"
+```
 
-MIT License - Feel free to use and modify!
+### Node.js (Axios)
+```javascript
+const axios = require('axios');
+
+async function getMovieData(movieName) {
+  const response = await axios.get('https://your-api-domain.com/api/rotten-tomatoes', {
+    params: { movie: movieName }
+  });
+  return response.data;
+}
+
+getMovieData('Inception').then(data => console.log(data));
+```
+
+## 🛠️ Tech Stack
+
+- **Python 3.8+** - Core language
+- **BeautifulSoup4** - Web scraping
+- **Requests** - HTTP library
+- **Vercel** - Serverless deployment (recommended)
+
+## 📦 Installation (Self-Hosting)
+
+### Prerequisites
+
+- Python 3.8 or higher
+- pip package manager
+
+### Local Setup
+
+1. Clone the repository
+```bash
+git clone https://github.com/yourusername/rotten-tomatoes-api.git
+cd rotten-tomatoes-api
+```
+
+2. Install dependencies
+```bash
+pip install requests beautifulsoup4
+```
+
+3. Run locally
+```bash
+python -m http.server 8000
+```
+
+4. Test the API
+```bash
+curl "http://localhost:8000/api/rotten-tomatoes?movie=Inception"
+```
+
+### Deploy to Vercel
+
+1. Install Vercel CLI
+```bash
+npm i -g vercel
+```
+
+2. Deploy
+```bash
+vercel
+```
+
+## ⚠️ Rate Limits & Fair Use
+
+- This API uses web scraping and should be used responsibly
+- Recommended: Cache responses to minimize requests
+- Fair use policy: Don't spam requests
+- No authentication required, but please be respectful
 
 ## 🤝 Contributing
 
-Pull requests are welcome! For major changes, please open an issue first.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-## 📧 Support
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-Having issues? Check:
-1. Vercel deployment logs
-2. Browser console for CORS errors
-3. Test with simple movie names first
+## 📝 License
 
-Happy coding! 🎬🍿
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🔗 Links
+
+- **Website:** [https://your-website-here.com](https://your-website-here.com)
+- **Documentation:** [https://your-website-here.com/docs](https://your-website-here.com/docs)
+- **Playground:** [https://your-website-here.com/playground](https://your-website-here.com/playground)
+- **Telegram Channel:** [https://t.me/yourchannel](https://t.me/yourchannel)
+- **GitHub:** [https://github.com/yourusername/rotten-tomatoes-api](https://github.com/yourusername/rotten-tomatoes-api)
+
+## 🙏 Acknowledgments
+
+- Data source: [Rotten Tomatoes](https://www.rottentomatoes.com)
+- Built with ❤️ using Python and BeautifulSoup
+
+## ⚖️ Disclaimer
+
+This API is for educational purposes only. All movie data belongs to Rotten Tomatoes and their respective owners. This project is not affiliated with or endorsed by Rotten Tomatoes.
+
+---
+
+**Made with ❤️ by Tharusha Dilshan**
+
+[![Star on GitHub](https://img.shields.io/github/stars/yourusername/rotten-tomatoes-api?style=social)](https://github.com/tharustack/rt-api)
+
+
+---
+
+## **📄 Additional Files**
+
+### **LICENSE (MIT)**
+```
+MIT License
+
+Copyright (c) 2025 Tharusha Dilshan
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### **.gitignore**
+```
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Vercel
+.vercel
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
